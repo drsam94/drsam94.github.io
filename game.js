@@ -1,9 +1,10 @@
+"use strict";
 document.body.onload = main;
 var G = {
     width: document.body.getBoundingClientRect().width,
     height: document.body.getBoundingClientRect().height,
     selectedNode: null,
-    lastSelectedNode: null,
+    gridSize: 3,
     grid: []
 };
 var KeyCode;
@@ -15,6 +16,25 @@ var KeyCode;
 })(KeyCode || (KeyCode = {}));
 ;
 ;
+var Coords = (function () {
+    function Coords(row_, col_) {
+        this.row = row_;
+        this.col = col_;
+    }
+    Coords.copy = function (other) {
+        return new Coords(other.row, other.col);
+    };
+    Coords.prototype.deltaTo = function (target) {
+        return new Coords(target.row - this.row, target.col - this.col);
+    };
+    Coords.prototype.applyDelta = function (target) {
+        return new Coords(((target.row + this.row) + G.gridSize) % G.gridSize, ((target.col + this.col) + G.gridSize) % G.gridSize);
+    };
+    Coords.prototype.toHTMLString = function () {
+        return "<p>(" + this.row.toString() + ", " + this.col.toString() + ")</p>";
+    };
+    return Coords;
+}());
 ;
 function makeDiv(dim) {
     var ret = document.createElement("div");
@@ -30,42 +50,64 @@ function getStyleDimensions(node) {
         height: Number(heightS.substring(0, widthS.length - 2))
     };
 }
-class Block {
-    constructor(rootNode, width, height, _loc) {
-        this.setDefault = function () {
-            this.node.style.border = "1px solid #ccc";
-            this.node.style.borderWidth = "1px 1px 1px 1px";
-        };
-        this.setSelected = function () {
-            this.node.style.border = "5px solid #ff0000";
-            this.node.style.borderWidth = "1px 1px 1px 1px";
-            G.selectedNode = this;
-        };
+var Block = (function () {
+    function Block(rootNode, width, height, _loc) {
+        var _this = this;
         var block = document.createElement("div");
         var parentDims = getStyleDimensions(rootNode);
         block.style.cssFloat = "left";
         block.style.width = ((parentDims.width - width * 2) / width).toString();
         block.style.height = ((parentDims.height - height * 2) / height).toString();
         this.node = block;
-        this.node.onclick = () => { this.setSelected(); };
-        this.loc = Object.assign({}, _loc);
+        this.node.onclick = function () { changeSelectionTo(_this); };
+        this.gridLoc = Coords.copy(_loc);
+        this.origLoc = Coords.copy(_loc);
+        this.updateDisplay();
         this.setDefault();
     }
-}
+    Block.prototype.setDefault = function () {
+        this.node.style.border = "1px solid #ccc";
+        this.node.style.borderWidth = "1px 1px 1px 1px";
+    };
+    Block.prototype.setSelected = function () {
+        this.node.style.border = "5px solid #ff0000";
+        this.node.style.borderWidth = "1px 1px 1px 1px";
+    };
+    Block.prototype.updateDisplay = function () {
+        this.node.innerHTML = this.origLoc.toHTMLString();
+    };
+    Block.prototype.swapWith = function (targetLoc) {
+        var targetBlock = G.grid[targetLoc.row][targetLoc.col];
+        console.log(targetLoc.toHTMLString());
+        var tmp = this.origLoc;
+        this.origLoc = targetBlock.origLoc;
+        targetBlock.origLoc = tmp;
+        this.updateDisplay();
+        targetBlock.updateDisplay();
+    };
+    return Block;
+}());
 ;
-document.body.onclick = function () {
-    if (G.selectedNode != G.lastSelectedNode) {
-        if (G.lastSelectedNode !== null) {
-            G.lastSelectedNode.setDefault();
-        }
+function changeSelectionTo(targetLoc) {
+    if (G.selectedNode == null) {
+        targetLoc.setSelected();
+        G.selectedNode = targetLoc;
+        return;
     }
-    G.lastSelectedNode = G.selectedNode;
-};
+    G.selectedNode.setDefault();
+    var valDiff = G.selectedNode.origLoc.deltaTo(targetLoc.origLoc);
+    var movDiff = G.selectedNode.gridLoc.deltaTo(G.selectedNode.gridLoc);
+    var totalDiff = movDiff.deltaTo(valDiff);
+    var swapLoc = G.selectedNode.gridLoc.applyDelta(totalDiff);
+    targetLoc.setSelected();
+    targetLoc.swapWith(swapLoc);
+    G.selectedNode = targetLoc;
+}
 document.body.onkeydown = function (evt) {
     if (G.selectedNode == null) {
         return;
     }
-    var pos = Object.assign({}, G.selectedNode.loc);
+    var pos = Coords.copy(G.selectedNode.gridLoc);
     switch (evt.keyCode) {
         case KeyCode.UpArrow:
             pos.row -= 1;
@@ -82,20 +124,18 @@ document.body.onkeydown = function (evt) {
         default:
             return;
     }
-    if (pos.col >= G.grid.length || pos.row >= G.grid[0].length ||
+    if (pos.col >= G.gridSize || pos.row >= G.gridSize ||
         pos.col < 0 || pos.row < 0) {
         return;
     }
-    G.selectedNode.setDefault();
-    G.grid[pos.row][pos.col].setSelected();
-    G.lastSelectedNode = G.selectedNode;
+    changeSelectionTo(G.grid[pos.row][pos.col]);
 };
 function populateGameBoard(rootNode, width, height) {
     for (var i = 0; i < height; ++i) {
         var row = [];
         G.grid.push(row);
         for (var j = 0; j < width; ++j) {
-            var block = new Block(rootNode, width, height, { row: i, col: j });
+            var block = new Block(rootNode, width, height, new Coords(i, j));
             row.push(block);
             rootNode.appendChild(block.node);
         }
@@ -110,6 +150,7 @@ function main() {
     var potHeight = G.height / 2 - tbDim.height;
     var sideLength = Math.min(potWidth, potHeight);
     var gameBody = makeDiv({ width: sideLength, height: sideLength });
-    populateGameBoard(gameBody, 3, 3);
+    populateGameBoard(gameBody, G.gridSize, G.gridSize);
     document.body.appendChild(gameBody);
+    G.grid[0][0].swapWith(new Coords(2, 1));
 }

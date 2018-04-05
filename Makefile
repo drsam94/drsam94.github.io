@@ -1,3 +1,5 @@
 
 all:
-	tsc -t es6 game.ts
+	tsc --removeComments --strictFunctionTypes \
+	--noImplicitThis --alwaysStrict --noUnusedLocals \
+	--noUnusedParameters --noImplicitReturns game.ts
