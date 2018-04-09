@@ -37,52 +37,45 @@ var Coords = (function () {
     Coords.prototype.toColor = function () {
         return G.colors[this.row].mul((this.col + 1) / G.gridSize);
     };
-    Coords.prototype.wrap = function (size) {
-        if (this.row < 0) {
-            this.row = size - 1;
-        }
-        else if (this.row == size) {
-            this.row = 0;
-        }
-        if (this.col < 0) {
-            this.col = size - 1;
-        }
-        else if (this.col == size) {
-            this.col = 0;
-        }
-    };
     return Coords;
 }());
 ;
+;
+function otherView(view) {
+    return view == 0 ? 1 : 0;
+}
 var Globals = (function () {
     function Globals() {
         this.width = document.body.getBoundingClientRect().width;
         this.height = document.body.getBoundingClientRect().height;
-        this.selection = new Coords(0, 0);
+        this.selection = [0, 0];
+        this.viewOfSelectedRow = 1;
         this.gridSize = 3;
         this.locGrid = [];
         this.colorGrid = [];
         this.colors = [new Color(255, 0, 0), new Color(0, 255, 0), new Color(0, 0, 255)];
     }
-    Globals.prototype.selectedCol = function () {
+    Globals.prototype.selectedBlocks = function (view, selection) {
+        selection = selection || this.selection;
         var ret = [];
         for (var i = 0; i < this.gridSize; ++i) {
-            ret.push(this.locGrid[i][this.selection.col]);
+            var grid = view == 0 ? this.locGrid : this.colorGrid;
+            if (this.viewOfSelectedRow == view) {
+                ret.push(grid[selection[view]][i]);
+            }
+            else {
+                ret.push(grid[i][selection[view]]);
+            }
         }
         return ret;
+    };
+    Globals.prototype.changeSelectionOrientation = function () {
+        this.viewOfSelectedRow = otherView(this.viewOfSelectedRow);
     };
     return Globals;
 }());
 ;
 var G = new Globals();
-var KeyCode;
-(function (KeyCode) {
-    KeyCode[KeyCode["Enter"] = 13] = "Enter";
-    KeyCode[KeyCode["LeftArrow"] = 37] = "LeftArrow";
-    KeyCode[KeyCode["UpArrow"] = 38] = "UpArrow";
-    KeyCode[KeyCode["RightArrow"] = 39] = "RightArrow";
-    KeyCode[KeyCode["DownArrow"] = 40] = "DownArrow";
-})(KeyCode || (KeyCode = {}));
 ;
 ;
 function makeDiv(dim) {
@@ -92,105 +85,174 @@ function makeDiv(dim) {
     ret.style.cssFloat = "left";
     return ret;
 }
-function getStyleDimensions(node) {
-    var widthS = node.style.width.toString();
-    var heightS = node.style.height.toString();
-    return {
-        width: Number(widthS.substring(0, widthS.length - 2)),
-        height: Number(heightS.substring(0, widthS.length - 2))
-    };
-}
 var Block = (function () {
-    function Block(rootNode, width, height, _loc) {
-        var _this = this;
-        var parentDims = getStyleDimensions(rootNode);
-        var block = makeDiv({ width: (parentDims.width - width * 5 * 6) / width,
-            height: (parentDims.height - height * 5 * 6) / height });
-        this.node = block;
-        this.node.onclick = function () { changeSelectionTo(new Coords(_this.colorLoc.row, _this.gridLoc.col)); };
-        this.gridLoc = Coords.copy(_loc);
-        this.colorLoc = Coords.copy(_loc);
+    function Block(parentDims, locParent, colorParent, loc) {
+        var makeBlock = function () {
+            return makeDiv({ width: (parentDims.width - G.gridSize * 5 * 6) / G.gridSize,
+                height: (parentDims.height - G.gridSize * 5 * 6) / G.gridSize });
+        };
+        this.nodes = new Array(2);
+        this.nodes[0] = makeBlock();
+        this.nodes[1] = makeBlock();
+        this.gridLoc = Coords.copy(loc);
+        this.colorLoc = Coords.copy(loc);
+        locParent.appendChild(this.nodes[0]);
+        colorParent.appendChild(this.nodes[1]);
+        for (var _i = 0, _a = this.nodes; _i < _a.length; _i++) {
+            var node = _a[_i];
+            node.style.borderWidth = "5px 5px 5px 5px";
+        }
+        this.selectionStatus = 3;
         this.setDefault();
     }
     Block.prototype.setDefault = function () {
-        this.node.style.border = "1px solid #ccc";
-        this.node.style.borderWidth = "5px 5px 5px 5px";
+        this.selectionStatus = 3;
+        for (var _i = 0, _a = this.nodes; _i < _a.length; _i++) {
+            var node = _a[_i];
+            node.style.border = "1px solid #ccc";
+            node.style.borderWidth = "5px 5px 5px 5px";
+        }
         this.updateDisplay();
     };
-    Block.prototype.setSelected = function () {
-        this.node.style.border = "1px solid #ff00ff";
-        this.node.style.borderWidth = "5px 5px 5px 5px";
+    Block.prototype.setSelected = function (type) {
+        if (this.selectionStatus != 3) {
+            this.selectionStatus = 2;
+        }
+        else {
+            this.selectionStatus = type;
+        }
         this.updateDisplay();
     };
     Block.prototype.updateDisplay = function () {
-        this.node.innerHTML = this.colorLoc.toHTMLString();
-        this.node.style.backgroundColor = this.colorLoc.toColor().toCSSString();
+        G.colorGrid[this.colorLoc.row][this.colorLoc.col] = this;
+        this.nodes[0].innerHTML = this.colorLoc.toHTMLString();
+        this.nodes[0].style.backgroundColor = this.colorLoc.toColor().toCSSString();
+        this.nodes[1].innerHTML = this.gridLoc.toHTMLString();
+        this.nodes[1].style.backgroundColor = this.gridLoc.toColor().toCSSString();
+        var styleStr = (function (status) {
+            switch (status) {
+                case 0:
+                    return "5px solid #ff00ff";
+                case 1:
+                    return "5px solid #ffff00";
+                case 2:
+                    return "5px solid #00ffff";
+                case 3:
+                default:
+                    return "5px solid #0c0c0c";
+            }
+        })(this.selectionStatus);
+        for (var _i = 0, _a = this.nodes; _i < _a.length; _i++) {
+            var node = _a[_i];
+            node.style.border = styleStr;
+        }
     };
-    Block.prototype.swapWith = function (targetLoc) {
-        var targetBlock = G.locGrid[targetLoc.row][targetLoc.col];
+    Block.prototype.swapWith = function (other) {
         var tmp = this.colorLoc;
-        this.colorLoc = targetBlock.colorLoc;
-        targetBlock.colorLoc = tmp;
+        this.colorLoc = other.colorLoc;
+        other.colorLoc = tmp;
+        var tmp2 = this.nodes[1];
+        this.nodes[1] = other.nodes[1];
+        other.nodes[1] = tmp2;
+        this.setDefault();
         this.updateDisplay();
-        targetBlock.updateDisplay();
+        other.setDefault();
+        other.updateDisplay();
     };
     return Block;
 }());
 ;
 function changeSelectionTo(newSelection) {
-    for (var _i = 0, _a = G.selectedCol(); _i < _a.length; _i++) {
-        var block = _a[_i];
-        block.setDefault();
+    for (var _i = 0, _a = [0, 1]; _i < _a.length; _i++) {
+        var view = _a[_i];
+        for (var _b = 0, _c = G.selectedBlocks(view); _b < _c.length; _b++) {
+            var block = _c[_b];
+            block.setDefault();
+        }
     }
     G.selection = newSelection;
-    for (var _b = 0, _c = G.selectedCol(); _b < _c.length; _b++) {
-        var block = _c[_b];
-        block.setSelected();
-    }
-}
-document.body.onkeydown = function (evt) {
-    var pos = Coords.copy(G.selection);
-    switch (evt.keyCode) {
-        case KeyCode.UpArrow:
-            pos.row -= 1;
-            break;
-        case KeyCode.LeftArrow:
-            pos.col -= 1;
-            break;
-        case KeyCode.RightArrow:
-            pos.col += 1;
-            break;
-        case KeyCode.DownArrow:
-            pos.row += 1;
-            break;
-        case KeyCode.Enter:
-        default:
-            return;
-    }
-    pos.wrap(G.gridSize);
-    changeSelectionTo(pos);
-};
-function populateGameBoard(rootNode, width, height) {
-    for (var i = 0; i < height; ++i) {
-        var row = [];
-        G.locGrid.push(row);
-        for (var j = 0; j < width; ++j) {
-            var block = new Block(rootNode, width, height, new Coords(i, j));
-            row.push(block);
-            rootNode.appendChild(block.node);
+    for (var _d = 0, _e = [0, 1]; _d < _e.length; _d++) {
+        var view = _e[_d];
+        for (var _f = 0, _g = G.selectedBlocks(view); _f < _g.length; _f++) {
+            var block = _g[_f];
+            block.setSelected(view);
         }
     }
 }
+function performSwap(selection) {
+    for (var _i = 0, _a = [0, 1]; _i < _a.length; _i++) {
+        var view = _a[_i];
+        for (var _b = 0, _c = G.selectedBlocks(view); _b < _c.length; _b++) {
+            var block = _c[_b];
+            block.setDefault();
+        }
+    }
+    var gridBlocks = G.selectedBlocks(0, selection);
+    var colorBlocks = G.selectedBlocks(1, selection);
+    for (var i = 0; i < G.gridSize; ++i) {
+        gridBlocks[i].swapWith(colorBlocks[i]);
+    }
+    G.changeSelectionOrientation();
+}
+document.body.onkeydown = function (evt) {
+    var pos = [G.selection[0], G.selection[1]];
+    switch (evt.keyCode) {
+        case 38:
+            pos[G.viewOfSelectedRow] -= 1;
+            break;
+        case 37:
+            pos[otherView(G.viewOfSelectedRow)] -= 1;
+            break;
+        case 39:
+            pos[otherView(G.viewOfSelectedRow)] += 1;
+            break;
+        case 40:
+            pos[G.viewOfSelectedRow] += 1;
+            break;
+        case 13:
+            performSwap(pos);
+            break;
+        default:
+            return;
+    }
+    for (var i = 0; i < pos.length; ++i) {
+        if (pos[i] < 0) {
+            pos[i] = G.gridSize - 1;
+        }
+        else if (pos[i] == G.gridSize) {
+            pos[i] = 0;
+        }
+    }
+    changeSelectionTo(pos);
+};
+function populateGameBoard(rootDims) {
+    var rootNode = makeDiv(rootDims);
+    var childDims = { width: rootDims.height, height: rootDims.height };
+    var locDiv = makeDiv(childDims);
+    var colorDiv = makeDiv(childDims);
+    for (var i = 0; i < G.gridSize; ++i) {
+        var gridRow = [];
+        var colorRow = [];
+        G.locGrid.push(gridRow);
+        G.colorGrid.push(colorRow);
+        for (var j = 0; j < G.gridSize; ++j) {
+            var block = new Block(childDims, locDiv, colorDiv, new Coords(i, j));
+            gridRow.push(block);
+            colorRow.push(block);
+        }
+    }
+    rootNode.appendChild(locDiv);
+    rootNode.appendChild(colorDiv);
+    document.body.appendChild(rootNode);
+    changeSelectionTo(G.selection);
+}
 function main() {
-    var tbDim = { width: G.width, height: G.height / 20 };
+    var tbDim = { width: G.width, height: G.height / 15 };
     var titleBar = makeDiv(tbDim);
     titleBar.innerHTML = "<h1>Foo</h1>";
     document.body.appendChild(titleBar);
-    var potWidth = G.width / 2;
-    var potHeight = G.height / 2 - tbDim.height;
-    var sideLength = Math.min(potWidth, potHeight);
-    var gameBody = makeDiv({ width: sideLength, height: sideLength });
-    populateGameBoard(gameBody, G.gridSize, G.gridSize);
-    document.body.appendChild(gameBody);
+    populateGameBoard({ width: G.width, height: G.height / 2 - tbDim.height });
+    performSwap([1, 1]);
+    G.viewOfSelectedRow = 0;
     changeSelectionTo(G.selection);
 }
