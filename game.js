@@ -16,7 +16,6 @@ var Color = (function () {
     };
     return Color;
 }());
-;
 var Coords = (function () {
     function Coords(row_, col_) {
         this.row = row_;
@@ -24,12 +23,6 @@ var Coords = (function () {
     }
     Coords.copy = function (other) {
         return new Coords(other.row, other.col);
-    };
-    Coords.prototype.deltaTo = function (target) {
-        return new Coords(target.row - this.row, target.col - this.col);
-    };
-    Coords.prototype.applyDelta = function (target) {
-        return new Coords(((target.row + this.row) + G.gridSize) % G.gridSize, ((target.col + this.col) + G.gridSize) % G.gridSize);
     };
     Coords.prototype.toHTMLString = function () {
         return "<p>(" + this.row.toString() + ", " + this.col.toString() + ")</p>";
@@ -39,10 +32,8 @@ var Coords = (function () {
     };
     return Coords;
 }());
-;
-;
 function otherView(view) {
-    return view == 0 ? 1 : 0;
+    return view === 0 ? 1 : 0;
 }
 var Globals = (function () {
     function Globals() {
@@ -59,8 +50,8 @@ var Globals = (function () {
         selection = selection || this.selection;
         var ret = [];
         for (var i = 0; i < this.gridSize; ++i) {
-            var grid = view == 0 ? this.locGrid : this.colorGrid;
-            if (this.viewOfSelectedRow == view) {
+            var grid = view === 0 ? this.locGrid : this.colorGrid;
+            if (this.viewOfSelectedRow === view) {
                 ret.push(grid[selection[view]][i]);
             }
             else {
@@ -69,15 +60,9 @@ var Globals = (function () {
         }
         return ret;
     };
-    Globals.prototype.changeSelectionOrientation = function () {
-        this.viewOfSelectedRow = otherView(this.viewOfSelectedRow);
-    };
     return Globals;
 }());
-;
 var G = new Globals();
-;
-;
 function makeDiv(dim) {
     var ret = document.createElement("div");
     ret.style.width = dim.width.toString();
@@ -115,7 +100,7 @@ var Block = (function () {
         this.updateDisplay();
     };
     Block.prototype.setSelected = function (type) {
-        if (this.selectionStatus != 3) {
+        if (this.selectionStatus !== 3) {
             this.selectionStatus = 2;
         }
         else {
@@ -161,7 +146,6 @@ var Block = (function () {
     };
     return Block;
 }());
-;
 function changeSelectionTo(newSelection) {
     for (var _i = 0, _a = [0, 1]; _i < _a.length; _i++) {
         var view = _a[_i];
@@ -192,7 +176,6 @@ function performSwap(selection) {
     for (var i = 0; i < G.gridSize; ++i) {
         gridBlocks[i].swapWith(colorBlocks[i]);
     }
-    G.changeSelectionOrientation();
 }
 document.body.onkeydown = function (evt) {
     var pos = [G.selection[0], G.selection[1]];
@@ -219,7 +202,7 @@ document.body.onkeydown = function (evt) {
         if (pos[i] < 0) {
             pos[i] = G.gridSize - 1;
         }
-        else if (pos[i] == G.gridSize) {
+        else if (pos[i] === G.gridSize) {
             pos[i] = 0;
         }
     }
@@ -253,6 +236,5 @@ function main() {
     document.body.appendChild(titleBar);
     populateGameBoard({ width: G.width, height: G.height / 2 - tbDim.height });
     performSwap([1, 1]);
-    G.viewOfSelectedRow = 0;
     changeSelectionTo(G.selection);
 }
