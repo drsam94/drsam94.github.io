@@ -35,6 +35,9 @@ var Coords = (function () {
 function otherView(view) {
     return view === 0 ? 1 : 0;
 }
+function absMod(x, y) {
+    return (x + y) % y;
+}
 var Globals = (function () {
     function Globals() {
         this.width = document.body.getBoundingClientRect().width;
@@ -45,6 +48,7 @@ var Globals = (function () {
         this.locGrid = [];
         this.colorGrid = [];
         this.colors = [new Color(255, 0, 0), new Color(0, 255, 0), new Color(0, 0, 255)];
+        this.postInit = false;
     }
     Globals.prototype.selectedBlocks = function (view, selection) {
         selection = selection || this.selection;
@@ -60,9 +64,47 @@ var Globals = (function () {
         }
         return ret;
     };
+    Globals.prototype.rotate = function (view, direction, selection) {
+        selection = selection || this.selection;
+        var blocks = this.selectedBlocks(view, selection);
+        var index = 0;
+        for (var i = 0; i < blocks.length - 1; ++i) {
+            var nextIndex = absMod(index + direction, G.gridSize);
+            blocks[index].swapWith(blocks[nextIndex]);
+            index = nextIndex;
+        }
+    };
+    Globals.prototype.verifyIfSolved = function () {
+        if (!this.postInit) {
+            return;
+        }
+        for (var i = 0; i < this.gridSize; ++i) {
+            for (var j = 0; j < this.gridSize; ++j) {
+                var loc = this.locGrid[i][j].colorLoc;
+                if (loc.row !== i || loc.col !== j) {
+                    return;
+                }
+            }
+        }
+        setTimeout(function () {
+            alert("You won, and I am too lazy to generate a better end condition at this time");
+        }, 0);
+    };
     return Globals;
 }());
 var G = new Globals();
+var KeyCode;
+(function (KeyCode) {
+    KeyCode[KeyCode["Enter"] = 13] = "Enter";
+    KeyCode[KeyCode["LeftArrow"] = 37] = "LeftArrow";
+    KeyCode[KeyCode["UpArrow"] = 38] = "UpArrow";
+    KeyCode[KeyCode["RightArrow"] = 39] = "RightArrow";
+    KeyCode[KeyCode["DownArrow"] = 40] = "DownArrow";
+    KeyCode[KeyCode["W"] = 'W'.charCodeAt(0)] = "W";
+    KeyCode[KeyCode["A"] = 'A'.charCodeAt(0)] = "A";
+    KeyCode[KeyCode["S"] = 'S'.charCodeAt(0)] = "S";
+    KeyCode[KeyCode["D"] = 'D'.charCodeAt(0)] = "D";
+})(KeyCode || (KeyCode = {}));
 function makeDiv(dim) {
     var ret = document.createElement("div");
     ret.style.width = dim.width.toString();
@@ -114,22 +156,23 @@ var Block = (function () {
         this.nodes[0].style.backgroundColor = this.colorLoc.toColor().toCSSString();
         this.nodes[1].innerHTML = this.gridLoc.toHTMLString();
         this.nodes[1].style.backgroundColor = this.gridLoc.toColor().toCSSString();
-        var styleStr = (function (status) {
-            switch (status) {
-                case 0:
-                    return "5px solid #ff00ff";
-                case 1:
-                    return "5px solid #ffff00";
-                case 2:
-                    return "5px solid #00ffff";
-                case 3:
-                default:
-                    return "5px solid #0c0c0c";
+        var styleStr = function (view, status) {
+            if (status !== 2 && view !== status) {
+                return "5px solid #0c0c0c";
             }
-        })(this.selectionStatus);
-        for (var _i = 0, _a = this.nodes; _i < _a.length; _i++) {
-            var node = _a[_i];
-            node.style.border = styleStr;
+            else if (view === 0) {
+                return "5px solid #ff00ff";
+            }
+            else if (view === 1) {
+                return "5px solid #ffff00";
+            }
+            else {
+                return "";
+            }
+        };
+        for (var _i = 0, _a = [0, 1]; _i < _a.length; _i++) {
+            var view = _a[_i];
+            this.nodes[view].style.border = styleStr(view, this.selectionStatus);
         }
     };
     Block.prototype.swapWith = function (other) {
@@ -163,51 +206,43 @@ function changeSelectionTo(newSelection) {
         }
     }
 }
-function performSwap(selection) {
-    for (var _i = 0, _a = [0, 1]; _i < _a.length; _i++) {
-        var view = _a[_i];
-        for (var _b = 0, _c = G.selectedBlocks(view); _b < _c.length; _b++) {
-            var block = _c[_b];
-            block.setDefault();
-        }
-    }
-    var gridBlocks = G.selectedBlocks(0, selection);
-    var colorBlocks = G.selectedBlocks(1, selection);
-    for (var i = 0; i < G.gridSize; ++i) {
-        gridBlocks[i].swapWith(colorBlocks[i]);
-    }
-}
-document.body.onkeydown = function (evt) {
+function onKeyEvent(evt) {
     var pos = [G.selection[0], G.selection[1]];
-    switch (evt.keyCode) {
-        case 38:
+    switch (evt) {
+        case KeyCode.UpArrow:
             pos[G.viewOfSelectedRow] -= 1;
             break;
-        case 37:
-            pos[otherView(G.viewOfSelectedRow)] -= 1;
+        case KeyCode.LeftArrow:
+            G.rotate(G.viewOfSelectedRow, 1);
             break;
-        case 39:
-            pos[otherView(G.viewOfSelectedRow)] += 1;
+        case KeyCode.RightArrow:
+            G.rotate(G.viewOfSelectedRow, -1);
             break;
-        case 40:
+        case KeyCode.DownArrow:
             pos[G.viewOfSelectedRow] += 1;
             break;
-        case 13:
-            performSwap(pos);
+        case KeyCode.W:
+            G.rotate(otherView(G.viewOfSelectedRow), 1);
+            break;
+        case KeyCode.S:
+            G.rotate(otherView(G.viewOfSelectedRow), -1);
+            break;
+        case KeyCode.A:
+            pos[otherView(G.viewOfSelectedRow)] -= 1;
+            break;
+        case KeyCode.D:
+            pos[otherView(G.viewOfSelectedRow)] += 1;
             break;
         default:
             return;
     }
     for (var i = 0; i < pos.length; ++i) {
-        if (pos[i] < 0) {
-            pos[i] = G.gridSize - 1;
-        }
-        else if (pos[i] === G.gridSize) {
-            pos[i] = 0;
-        }
+        pos[i] = absMod(pos[i], G.gridSize);
     }
     changeSelectionTo(pos);
-};
+    G.verifyIfSolved();
+}
+document.body.onkeydown = function (evt) { onKeyEvent(evt.keyCode); };
 function populateGameBoard(rootDims) {
     var rootNode = makeDiv(rootDims);
     var childDims = { width: rootDims.height, height: rootDims.height };
@@ -229,12 +264,22 @@ function populateGameBoard(rootDims) {
     document.body.appendChild(rootNode);
     changeSelectionTo(G.selection);
 }
+function generateTestPuzzle() {
+    var testSequence = [KeyCode.D, KeyCode.S, KeyCode.S, KeyCode.RightArrow, KeyCode.DownArrow, KeyCode.LeftArrow];
+    for (var _i = 0, testSequence_1 = testSequence; _i < testSequence_1.length; _i++) {
+        var key = testSequence_1[_i];
+        onKeyEvent(key);
+    }
+    changeSelectionTo([0, 0]);
+}
 function main() {
+    document.body.style.visibility = "hidden";
     var tbDim = { width: G.width, height: G.height / 15 };
     var titleBar = makeDiv(tbDim);
-    titleBar.innerHTML = "<h1>Foo</h1>";
+    titleBar.innerHTML = "<h1>Left: WASD, Right: Arrow Keys; move selection and rotate row/col</h1>";
     document.body.appendChild(titleBar);
     populateGameBoard({ width: G.width, height: G.height / 2 - tbDim.height });
-    performSwap([1, 1]);
-    changeSelectionTo(G.selection);
+    generateTestPuzzle();
+    G.postInit = true;
+    document.body.style.visibility = "visible";
 }

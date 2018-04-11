@@ -55,8 +55,18 @@ const enum View {
     None = 3
 }
 
+const enum Direction {
+    Up = 1,
+    Down = -1
+}
+
 function otherView(view : View) : View {
     return view === View.Grid ? View.Color : View.Grid;
+}
+
+/// Like modulus, but behaves as mathematically expected on negative numbers
+function absMod(x : number, y : number) : number {
+    return (x + y) % y;
 }
 
 /// Singleton class for storing various globals
@@ -70,7 +80,7 @@ class Globals {
     public readonly colors : Color[];
     // This has been non-constant in some intermediate implementations
     public readonly viewOfSelectedRow : View;
-
+    public postInit : boolean;
     constructor() {
         this.width =  document.body.getBoundingClientRect().width;
         this.height = document.body.getBoundingClientRect().height;
@@ -80,6 +90,7 @@ class Globals {
         this.locGrid = [];
         this.colorGrid = [];
         this.colors = [new Color(255, 0, 0), new Color(0, 255, 0), new Color(0, 0, 255)];
+        this.postInit = false;
     }
 
     public selectedBlocks(view : View, selection? : [number, number]) : Block[] {
@@ -95,17 +106,42 @@ class Globals {
         }
         return ret;
     }
-
+    public rotate(view : View, direction : Direction, selection? : [number, number]) : void {
+        selection = selection || this.selection;
+        const blocks = this.selectedBlocks(view, selection);
+        let index = 0;
+        for (let i = 0; i < blocks.length - 1; ++i) {
+            const nextIndex = absMod(index + direction, G.gridSize);
+            blocks[index].swapWith(blocks[nextIndex]);
+            index = nextIndex;
+        }
+    }
+    public verifyIfSolved() : void {
+        if (!this.postInit) { return; }
+        for (let i = 0; i < this.gridSize; ++i) {
+            for (let j = 0; j < this.gridSize; ++j) {
+                const loc = this.locGrid[i][j].colorLoc;
+                if (loc.row !== i || loc.col !== j) { return; }
+            }
+        }
+        setTimeout(function() {
+            alert("You won, and I am too lazy to generate a better end condition at this time");
+        }, 0);
+    }
 }
 
 const G = new Globals();
 
-const enum KeyCode {
+enum KeyCode {
     Enter = 13,
     LeftArrow = 37,
     UpArrow = 38,
     RightArrow = 39,
-    DownArrow = 40
+    DownArrow = 40,
+    W = 'W'.charCodeAt(0),
+    A = 'A'.charCodeAt(0),
+    S = 'S'.charCodeAt(0),
+    D = 'D'.charCodeAt(0)
 }
 
 interface Dims {
@@ -123,9 +159,9 @@ function makeDiv(dim : Dims) : HTMLElement {
 
 class Block {
     // Display value / location in the solution
-    private colorLoc : Coords;
+    public colorLoc : Coords;
     // Location on grid
-    private gridLoc : Coords;
+    public gridLoc : Coords;
 
     private readonly nodes : HTMLElement[];
     private selectionStatus : View;
@@ -153,21 +189,19 @@ class Block {
         this.nodes[View.Grid].style.backgroundColor = this.colorLoc.toColor().toCSSString();
         this.nodes[View.Color].innerHTML = this.gridLoc.toHTMLString();
         this.nodes[View.Color].style.backgroundColor = this.gridLoc.toColor().toCSSString();
-        const styleStr : string = (function(status : View) : string {
-            switch (status) {
-                case View.Grid:
+        const styleStr = function(view : View, status : View) : string {
+            if (status !== View.Both && view !== status) {
+                return "5px solid #0c0c0c";
+            } else if (view === View.Grid) {
                     return "5px solid #ff00ff";
-                case View.Color:
-                    return "5px solid #ffff00";
-                case View.Both:
-                    return "5px solid #00ffff";
-                case View.None:
-                default:
-                    return "5px solid #0c0c0c";
+            } else if (view === View.Color) {
+                return "5px solid #ffff00";
+            } else {
+                return "";
             }
-        })(this.selectionStatus);
-        for (const node of this.nodes) {
-            node.style.border = styleStr;
+        };
+        for (const view of [View.Grid, View.Color]) {
+            this.nodes[view].style.border = styleStr(view, this.selectionStatus);
         }
     }
 
@@ -222,50 +256,44 @@ function changeSelectionTo(newSelection : [number, number]) : void {
     }
 }
 
-function performSwap(selection : [number, number]) : void {
-    for (const view of [View.Grid, View.Color]) {
-        for (const block of G.selectedBlocks(view)) {
-            block.setDefault();
-        }
-    }
-    const gridBlocks : Block[]  = G.selectedBlocks(View.Grid, selection);
-    const colorBlocks : Block[] = G.selectedBlocks(View.Color, selection);
-    for (let i = 0; i < G.gridSize; ++i) {
-        gridBlocks[i].swapWith(colorBlocks[i]);
-    }
-}
-
-document.body.onkeydown = function(evt : KeyboardEvent) : void  {
+function onKeyEvent(evt : KeyCode) : void  {
     const pos : [number, number] = [G.selection[0], G.selection[1]];
-    switch (evt.keyCode) {
+    switch (evt) {
         case KeyCode.UpArrow:
             pos[G.viewOfSelectedRow] -= 1;
             break;
         case KeyCode.LeftArrow:
-            pos[otherView(G.viewOfSelectedRow)] -= 1;
+            G.rotate(G.viewOfSelectedRow, Direction.Up);
             break;
         case KeyCode.RightArrow:
-            pos[otherView(G.viewOfSelectedRow)] += 1;
+            G.rotate(G.viewOfSelectedRow, Direction.Down);
             break;
         case KeyCode.DownArrow:
             pos[G.viewOfSelectedRow] += 1;
             break;
-        case KeyCode.Enter:
-            performSwap(pos);
+        case KeyCode.W:
+            G.rotate(otherView(G.viewOfSelectedRow), Direction.Up);
+            break;
+        case KeyCode.S:
+            G.rotate(otherView(G.viewOfSelectedRow), Direction.Down);
+            break;
+        case KeyCode.A:
+            pos[otherView(G.viewOfSelectedRow)] -= 1;
+            break;
+        case KeyCode.D:
+            pos[otherView(G.viewOfSelectedRow)] += 1;
             break;
         default:
             return;
     }
     // Wrap selection around grid if needed
     for (let i = 0; i < pos.length; ++i) {
-        if (pos[i] < 0) {
-            pos[i] = G.gridSize - 1;
-        } else if (pos[i] === G.gridSize) {
-             pos[i] = 0;
-        }
+        pos[i] = absMod(pos[i], G.gridSize);
     }
     changeSelectionTo(pos);
-};
+    G.verifyIfSolved();
+}
+document.body.onkeydown = function(evt : KeyboardEvent) : void { onKeyEvent(evt.keyCode); };
 
 function populateGameBoard(rootDims : Dims) : void {
     const rootNode : HTMLElement = makeDiv(rootDims);
@@ -289,11 +317,25 @@ function populateGameBoard(rootDims : Dims) : void {
     changeSelectionTo(G.selection);
 }
 
+function generateTestPuzzle() {
+    // Don't Look, Spoilers!!!
+    const testSequence = [KeyCode.D, KeyCode.S, KeyCode.S, KeyCode.RightArrow, KeyCode.DownArrow, KeyCode.LeftArrow];
+    for (const key of testSequence) {
+        onKeyEvent(key);
+    }
+    changeSelectionTo([0, 0]);
+}
 function main() : void {
+    // I don't fully understand the timing of rendering stuffs, but setting visibility like this seems like it
+    // could help prevent the board from being visible until it is ready
+    document.body.style.visibility = "hidden";
     const tbDim : Dims = { width: G.width, height: G.height / 15};
     const titleBar : HTMLElement = makeDiv(tbDim);
-    titleBar.innerHTML = "<h1>Foo</h1>";
+    titleBar.innerHTML = "<h1>Left: WASD, Right: Arrow Keys; move selection and rotate row/col</h1>";
     document.body.appendChild(titleBar);
     populateGameBoard({ width: G.width, height: G.height / 2 - tbDim.height});
-    // TODO: set up an actual puzzle of a board
+    // TODO: generate puzzles in an interesting way
+    generateTestPuzzle();
+    G.postInit = true;
+    document.body.style.visibility = "visible";
 }
