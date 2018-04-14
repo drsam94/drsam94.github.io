@@ -1,4 +1,5 @@
-document.body.onload = main;
+
+// Non-confidential and non-proprietary property of Sam Donow, 2018
 
 class Color {
     public r : number;
@@ -24,6 +25,8 @@ class Color {
     }
 }
 
+// TODO: include in a class, as that's apparently the only way to make it readonly (i.e, actually const)
+const allColors = [new Color(255, 0, 0), new Color(0, 255, 0), new Color(0, 0, 255)];
 class Coords {
     public row : number;
     public col : number;
@@ -43,9 +46,19 @@ class Coords {
 
     // row -> color
     // col -> scale
-    public toColor() : Color {
-        return G.colors[this.row].mul((this.col + 1) / G.gridSize);
+    public toColor(maxScale : number) : Color {
+        return allColors[this.row].mul((this.col + 1) / maxScale);
     }
+}
+
+const enum Direction {
+    Up = 1,
+    Down = -1
+}
+
+interface Dims {
+    width : number;
+    height : number;
 }
 
 const enum View {
@@ -53,11 +66,6 @@ const enum View {
     Color = 1,
     Both = 2,
     None = 3
-}
-
-const enum Direction {
-    Up = 1,
-    Down = -1
 }
 
 function otherView(view : View) : View {
@@ -77,10 +85,9 @@ class Globals {
     public readonly gridSize : number;
     public readonly locGrid : Block[][];
     public readonly colorGrid : Block[][];
-    public readonly colors : Color[];
     // This has been non-constant in some intermediate implementations
     public readonly viewOfSelectedRow : View;
-    public postInit : boolean;
+    private isLive : boolean;
     constructor() {
         this.width =  document.body.getBoundingClientRect().width;
         this.height = document.body.getBoundingClientRect().height;
@@ -89,8 +96,7 @@ class Globals {
         this.gridSize = 3;
         this.locGrid = [];
         this.colorGrid = [];
-        this.colors = [new Color(255, 0, 0), new Color(0, 255, 0), new Color(0, 0, 255)];
-        this.postInit = false;
+        this.isLive = true;
     }
 
     public selectedBlocks(view : View, selection? : [number, number]) : Block[] {
@@ -117,7 +123,7 @@ class Globals {
         }
     }
     public verifyIfSolved() : void {
-        if (!this.postInit) { return; }
+        if (!this.isLive) { return; }
         for (let i = 0; i < this.gridSize; ++i) {
             for (let j = 0; j < this.gridSize; ++j) {
                 const loc = this.locGrid[i][j].colorLoc;
@@ -127,6 +133,13 @@ class Globals {
         setTimeout(function() {
             alert("You won, and I am too lazy to generate a better end condition at this time");
         }, 0);
+    }
+
+    /// Attempt at something like a CRTP class for doing something not live;
+    public doNotLive(f : () => void) : void {
+        this.isLive = false;
+        f();
+        this.isLive = true;
     }
 }
 
@@ -142,11 +155,6 @@ enum KeyCode {
     A = 'A'.charCodeAt(0),
     S = 'S'.charCodeAt(0),
     D = 'D'.charCodeAt(0)
-}
-
-interface Dims {
-    width : number;
-    height : number;
 }
 
 function makeDiv(dim : Dims) : HTMLElement {
@@ -186,9 +194,9 @@ class Block {
     public updateDisplay() : void {
         G.colorGrid[this.colorLoc.row][this.colorLoc.col] = this;
         this.nodes[View.Grid].innerHTML = this.colorLoc.toHTMLString();
-        this.nodes[View.Grid].style.backgroundColor = this.colorLoc.toColor().toCSSString();
+        this.nodes[View.Grid].style.backgroundColor = this.colorLoc.toColor(G.gridSize).toCSSString();
         this.nodes[View.Color].innerHTML = this.gridLoc.toHTMLString();
-        this.nodes[View.Color].style.backgroundColor = this.gridLoc.toColor().toCSSString();
+        this.nodes[View.Color].style.backgroundColor = this.gridLoc.toColor(G.gridSize).toCSSString();
         const styleStr = function(view : View, status : View) : string {
             if (status !== View.Both && view !== status) {
                 return "5px solid #0c0c0c";
@@ -317,25 +325,29 @@ function populateGameBoard(rootDims : Dims) : void {
     changeSelectionTo(G.selection);
 }
 
-function generateTestPuzzle() {
-    // Don't Look, Spoilers!!!
-    const testSequence = [KeyCode.D, KeyCode.S, KeyCode.S, KeyCode.RightArrow, KeyCode.DownArrow, KeyCode.LeftArrow];
-    for (const key of testSequence) {
-        onKeyEvent(key);
-    }
-    changeSelectionTo([0, 0]);
+function generateNewPuzzle() : void {
+    const actions : KeyCode[] = [KeyCode.W, KeyCode.A, KeyCode.S, KeyCode.D,
+                                 KeyCode.UpArrow, KeyCode.DownArrow, KeyCode.LeftArrow, KeyCode.RightArrow];
+    G.doNotLive(() => {
+        const steps : number = 5 + Math.floor(Math.random() * 100);
+        for (let i = 0; i < steps; ++i) {
+            onKeyEvent(actions[Math.floor(Math.random() * actions.length)]);
+        }
+        changeSelectionTo([0, 0]);
+    });
 }
+
 function main() : void {
-    // I don't fully understand the timing of rendering stuffs, but setting visibility like this seems like it
-    // could help prevent the board from being visible until it is ready
-    document.body.style.visibility = "hidden";
     const tbDim : Dims = { width: G.width, height: G.height / 15};
     const titleBar : HTMLElement = makeDiv(tbDim);
     titleBar.innerHTML = "<h1>Left: WASD, Right: Arrow Keys; move selection and rotate row/col</h1>";
+    /*const refreshButton : HTMLElement = makeDiv({ width: tbDim.height, height: tbDim.height });
+    refreshButton.style.fontFamily = "Lucida Sans Unicode";
+    refreshButton.innerHTML = "\u21bb";
+    refreshButton.onclick = generateNewPuzzle;
+    titleBar.appendChild(refreshButton);*/
     document.body.appendChild(titleBar);
     populateGameBoard({ width: G.width, height: G.height / 2 - tbDim.height});
-    // TODO: generate puzzles in an interesting way
-    generateTestPuzzle();
-    G.postInit = true;
-    document.body.style.visibility = "visible";
+    generateNewPuzzle();
 }
+document.body.onload = main;

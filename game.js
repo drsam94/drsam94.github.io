@@ -1,5 +1,4 @@
 "use strict";
-document.body.onload = main;
 var Color = (function () {
     function Color(red, green, blue) {
         this.r = red;
@@ -16,6 +15,7 @@ var Color = (function () {
     };
     return Color;
 }());
+var allColors = [new Color(255, 0, 0), new Color(0, 255, 0), new Color(0, 0, 255)];
 var Coords = (function () {
     function Coords(row_, col_) {
         this.row = row_;
@@ -27,8 +27,8 @@ var Coords = (function () {
     Coords.prototype.toHTMLString = function () {
         return "<p>(" + this.row.toString() + ", " + this.col.toString() + ")</p>";
     };
-    Coords.prototype.toColor = function () {
-        return G.colors[this.row].mul((this.col + 1) / G.gridSize);
+    Coords.prototype.toColor = function (maxScale) {
+        return allColors[this.row].mul((this.col + 1) / maxScale);
     };
     return Coords;
 }());
@@ -47,8 +47,7 @@ var Globals = (function () {
         this.gridSize = 3;
         this.locGrid = [];
         this.colorGrid = [];
-        this.colors = [new Color(255, 0, 0), new Color(0, 255, 0), new Color(0, 0, 255)];
-        this.postInit = false;
+        this.isLive = true;
     }
     Globals.prototype.selectedBlocks = function (view, selection) {
         selection = selection || this.selection;
@@ -75,7 +74,7 @@ var Globals = (function () {
         }
     };
     Globals.prototype.verifyIfSolved = function () {
-        if (!this.postInit) {
+        if (!this.isLive) {
             return;
         }
         for (var i = 0; i < this.gridSize; ++i) {
@@ -89,6 +88,11 @@ var Globals = (function () {
         setTimeout(function () {
             alert("You won, and I am too lazy to generate a better end condition at this time");
         }, 0);
+    };
+    Globals.prototype.doNotLive = function (f) {
+        this.isLive = false;
+        f();
+        this.isLive = true;
     };
     return Globals;
 }());
@@ -153,9 +157,9 @@ var Block = (function () {
     Block.prototype.updateDisplay = function () {
         G.colorGrid[this.colorLoc.row][this.colorLoc.col] = this;
         this.nodes[0].innerHTML = this.colorLoc.toHTMLString();
-        this.nodes[0].style.backgroundColor = this.colorLoc.toColor().toCSSString();
+        this.nodes[0].style.backgroundColor = this.colorLoc.toColor(G.gridSize).toCSSString();
         this.nodes[1].innerHTML = this.gridLoc.toHTMLString();
-        this.nodes[1].style.backgroundColor = this.gridLoc.toColor().toCSSString();
+        this.nodes[1].style.backgroundColor = this.gridLoc.toColor(G.gridSize).toCSSString();
         var styleStr = function (view, status) {
             if (status !== 2 && view !== status) {
                 return "5px solid #0c0c0c";
@@ -264,22 +268,23 @@ function populateGameBoard(rootDims) {
     document.body.appendChild(rootNode);
     changeSelectionTo(G.selection);
 }
-function generateTestPuzzle() {
-    var testSequence = [KeyCode.D, KeyCode.S, KeyCode.S, KeyCode.RightArrow, KeyCode.DownArrow, KeyCode.LeftArrow];
-    for (var _i = 0, testSequence_1 = testSequence; _i < testSequence_1.length; _i++) {
-        var key = testSequence_1[_i];
-        onKeyEvent(key);
-    }
-    changeSelectionTo([0, 0]);
+function generateNewPuzzle() {
+    var actions = [KeyCode.W, KeyCode.A, KeyCode.S, KeyCode.D,
+        KeyCode.UpArrow, KeyCode.DownArrow, KeyCode.LeftArrow, KeyCode.RightArrow];
+    G.doNotLive(function () {
+        var steps = 5 + Math.floor(Math.random() * 100);
+        for (var i = 0; i < steps; ++i) {
+            onKeyEvent(actions[Math.floor(Math.random() * actions.length)]);
+        }
+        changeSelectionTo([0, 0]);
+    });
 }
 function main() {
-    document.body.style.visibility = "hidden";
     var tbDim = { width: G.width, height: G.height / 15 };
     var titleBar = makeDiv(tbDim);
     titleBar.innerHTML = "<h1>Left: WASD, Right: Arrow Keys; move selection and rotate row/col</h1>";
     document.body.appendChild(titleBar);
     populateGameBoard({ width: G.width, height: G.height / 2 - tbDim.height });
-    generateTestPuzzle();
-    G.postInit = true;
-    document.body.style.visibility = "visible";
+    generateNewPuzzle();
 }
+document.body.onload = main;
