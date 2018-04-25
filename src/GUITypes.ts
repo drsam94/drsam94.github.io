@@ -1,5 +1,4 @@
-// Non-confidential and non-proprietary property of Sam Donow, 2018
-// TODO: get a system by which I can use modules, and use this as a module
+// Non-confidential and non-proprietary information of Sam Donow
 
 export class Color {
     public r : number;
