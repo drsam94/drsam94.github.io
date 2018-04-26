@@ -1,8 +1,7 @@
 <html>
-    <head>
-    </head>
+    <head></head>
     <body>
-        <script type="module" src="/build/game.js">
-        </script>
+        <script data-main="build/game" src="3ps/require.js"></script>
+        <script>require(["game"], function() { document.body.onload(); });</script>
     </body>
 </html>

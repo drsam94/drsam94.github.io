@@ -282,11 +282,6 @@ function main() : void {
     const tbDim : Dims = { width: G.width, height: G.height / 15};
     const titleBar : HTMLElement = makeDiv(tbDim);
     titleBar.innerHTML = "<h1>Left: WASD, Right: Arrow Keys; move selection and rotate row/col</h1>";
-    /*const refreshButton : HTMLElement = makeDiv({ width: tbDim.height, height: tbDim.height });
-    refreshButton.style.fontFamily = "Lucida Sans Unicode";
-    refreshButton.innerHTML = "\u21bb";
-    refreshButton.onclick = generateNewPuzzle;
-    titleBar.appendChild(refreshButton);*/
     document.body.appendChild(titleBar);
     populateGameBoard({ width: G.width, height: G.height / 2 - tbDim.height});
     generateNewPuzzle();
