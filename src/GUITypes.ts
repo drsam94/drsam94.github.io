@@ -52,7 +52,9 @@ export class Coords {
 
 export const enum Direction {
     Up = 1,
-    Down = -1
+    Right = 2,
+    Down = -1,
+    Left = -2,
 }
 
 export interface Dims {
