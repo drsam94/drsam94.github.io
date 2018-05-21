@@ -22,6 +22,26 @@ export class Color {
                          Math.round(this.g * x),
                          Math.round(this.b * x));
     }
+
+    public static white() : Color {
+        return new Color(255, 255, 255);
+    }
+
+    public static black() : Color {
+        return new Color(0.0, 0.0, 0.0);
+    }
+
+    public static red() : Color {
+        return new Color(255, 0.0, 0.0);
+    }
+
+    public static green() : Color {
+        return new Color(0.0, 255, 0.0);
+    }
+
+    public static blue() : Color {
+        return new Color(0.0, 0.0, 255);
+    }
 }
 
 // TODO: include in a class, as that's apparently the only way to make it readonly (i.e, actually const)
@@ -54,7 +74,7 @@ export const enum Direction {
     Up = 1,
     Right = 2,
     Down = -1,
-    Left = -2,
+    Left = -2
 }
 
 export interface Dims {
