@@ -279,7 +279,7 @@ function main() : void {
     const tbDim : Dims = { width: G.width, height: G.height / 7 };
     const titleBar : HTMLElement = makeDiv(tbDim);
     titleBar.innerHTML = "<h1>You are red. Goal is blue. Obstacles are black. </br>" +
-                         "Friendly obstacles are green. Use arrow keys. R to reset</h1>";
+                         "Joinable obstacles are green. Use arrow keys. R to reset</h1>";
     document.body.appendChild(titleBar);
     populateGameBoard({ width: G.width, height: G.height / 1.5 - tbDim.height});
     G.resetPuzzle(level1);
