@@ -63,7 +63,8 @@ define("game2", ["require", "exports", "GUITypes"], function (require, exports, 
             this.allowInput = true;
             this.grid = [];
             this.playerSquares = [];
-            this.currentPuzzle = [];
+            this.currentPuzzleIdx = 0;
+            this.levels = [];
         }
         Globals.prototype.makeMove = function (dir) {
             G.allowInput = false;
@@ -85,7 +86,11 @@ define("game2", ["require", "exports", "GUITypes"], function (require, exports, 
             block.updateDisplay();
         };
         Globals.prototype.resetPuzzle = function (puzzle) {
-            puzzle = puzzle || this.currentPuzzle;
+            if (puzzle !== undefined) {
+                this.levels.push(puzzle);
+                this.currentPuzzleIdx = this.levels.length + 1;
+            }
+            puzzle = this.currentPuzzle();
             this.playerSquares = [];
             this.allowInput = true;
             if (puzzle.length !== G.gridSize || puzzle[0].length !== G.gridSize) {
@@ -96,7 +101,36 @@ define("game2", ["require", "exports", "GUITypes"], function (require, exports, 
                     G.setState(new GUITypes_1.Coords(i, j), puzzle[i].charCodeAt(j));
                 }
             }
-            this.currentPuzzle = puzzle;
+        };
+        Globals.prototype.loadPuzzles = function () {
+            var level1 = [
+                "peeeceeeee",
+                "oeeceeeeee",
+                "oeeoeeeecc",
+                "eeeeeeeeee",
+                "oeeeeccooo",
+                "eeeeeeeoee",
+                "eeeeeeeooo",
+                "coooeeeeee",
+                "eeeeeeeeee",
+                "eeeeeceeet"
+            ];
+            var level2 = [
+                "peeceeeooc",
+                "eeeceeooee",
+                "oceeeeccoo",
+                "eeeeeoccet",
+                "eeeeeeeeee",
+                "eeooocceee",
+                "eeeeecoeee",
+                "eeeeooeeee",
+                "eeeeeeeeee",
+                "eeeeeeeeee"
+            ];
+            this.levels = [level1, level2];
+        };
+        Globals.prototype.currentPuzzle = function () {
+            return this.levels[this.currentPuzzleIdx];
         };
         Globals.prototype.setPlayerSquaresEmpty = function () {
             for (var _i = 0, _a = this.playerSquares; _i < _a.length; _i++) {
@@ -105,8 +139,12 @@ define("game2", ["require", "exports", "GUITypes"], function (require, exports, 
             }
         };
         Globals.prototype.youWin = function () {
+            var _this = this;
             setTimeout(function () {
                 alert("You won, yay");
+                _this.currentPuzzleIdx++;
+                _this.currentPuzzleIdx %= _this.levels.length;
+                _this.resetPuzzle();
             }, 0);
         };
         Globals.prototype.postMoveUpdate = function (dir) {
@@ -289,26 +327,22 @@ define("game2", ["require", "exports", "GUITypes"], function (require, exports, 
         rootNode.appendChild(locDiv);
         document.body.appendChild(rootNode);
     }
-    var level1 = [
-        "peeeceeeee",
-        "oeeceeeeee",
-        "oeeoeeeecc",
-        "eeeeeeeeee",
-        "oeeeeccooo",
-        "eeeeeeeoee",
-        "eeeeeeeooo",
-        "coooeeeeee",
-        "eeeeeeeeee",
-        "eeeeeceeet"
-    ];
+    var once = false;
     function main() {
+        if (once) {
+            return;
+        }
+        else {
+            once = true;
+        }
         var tbDim = { width: G.width, height: G.height / 7 };
         var titleBar = makeDiv(tbDim);
         titleBar.innerHTML = "<h1>You are red. Goal is blue. Obstacles are black. </br>" +
             "Joinable obstacles are green. Use arrow keys. R to reset</h1>";
         document.body.appendChild(titleBar);
         populateGameBoard({ width: G.width, height: G.height / 1.5 - tbDim.height });
-        G.resetPuzzle(level1);
+        G.loadPuzzles();
+        G.resetPuzzle();
     }
     document.body.onload = main;
 });

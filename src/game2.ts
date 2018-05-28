@@ -12,7 +12,8 @@ class Globals {
     public grid : Block[][];
     public playerSquares : Coords[];
     private allowInput : boolean;
-    private currentPuzzle : PuzzleDescription;
+    private currentPuzzleIdx : number;
+    private levels : PuzzleDescription[];
     constructor() {
         this.width =  document.body.getBoundingClientRect().width;
         this.height = document.body.getBoundingClientRect().height;
@@ -20,7 +21,8 @@ class Globals {
         this.allowInput = true;
         this.grid = [];
         this.playerSquares = [];
-        this.currentPuzzle = [];
+        this.currentPuzzleIdx = 0;
+        this.levels = [];
     }
 
     public makeMove(dir : Direction) : void {
@@ -47,7 +49,11 @@ class Globals {
     }
 
     public resetPuzzle(puzzle? : PuzzleDescription) : void {
-        puzzle = puzzle || this.currentPuzzle;
+        if (puzzle !== undefined) {
+            this.levels.push(puzzle);
+            this.currentPuzzleIdx = this.levels.length + 1;
+        }
+        puzzle = this.currentPuzzle();
         this.playerSquares = [];
         this.allowInput = true;
         if (puzzle.length !== G.gridSize || puzzle[0].length !== G.gridSize) {
@@ -58,9 +64,39 @@ class Globals {
                 G.setState(new Coords(i, j), puzzle[i].charCodeAt(j));
             }
         }
-        this.currentPuzzle = puzzle;
+    }
+    public loadPuzzles() : void {
+        const level1 : string[] = [
+        "peeeceeeee",
+        "oeeceeeeee",
+        "oeeoeeeecc",
+        "eeeeeeeeee",
+        "oeeeeccooo",
+        "eeeeeeeoee",
+        "eeeeeeeooo",
+        "coooeeeeee",
+        "eeeeeeeeee",
+        "eeeeeceeet"
+        ];
+
+        const level2 : string[] = [
+        "peeceeeooc",
+        "eeeceeooee",
+        "oceeeeccoo",
+        "eeeeeoccet",
+        "eeeeeeeeee",
+        "eeooocceee",
+        "eeeeecoeee",
+        "eeeeooeeee",
+        "eeeeeeeeee",
+        "eeeeeeeeee"
+        ];
+        this.levels = [level1, level2];
     }
 
+    private currentPuzzle() : PuzzleDescription {
+        return this.levels[this.currentPuzzleIdx];
+    }
     private setPlayerSquaresEmpty() {
         for (const pSquare of this.playerSquares) {
             this.grid[pSquare.row][pSquare.col].state = BlockType.Empty;
@@ -68,8 +104,11 @@ class Globals {
     }
 
     private youWin() : void {
-        setTimeout(function() {
+        setTimeout(() => {
             alert("You won, yay");
+            this.currentPuzzleIdx++;
+            this.currentPuzzleIdx %= this.levels.length;
+            this.resetPuzzle();
         }, 0);
     }
 
@@ -262,26 +301,20 @@ function populateGameBoard(rootDims : Dims) : void {
     document.body.appendChild(rootNode);
 }
 
-const level1 : string[] = [
-"peeeceeeee",
-"oeeceeeeee",
-"oeeoeeeecc",
-"eeeeeeeeee",
-"oeeeeccooo",
-"eeeeeeeoee",
-"eeeeeeeooo",
-"coooeeeeee",
-"eeeeeeeeee",
-"eeeeeceeet"
-];
-
+let once : boolean = false;
 function main() : void {
+    if (once) {
+        return;
+    } else {
+        once = true;
+    }
     const tbDim : Dims = { width: G.width, height: G.height / 7 };
     const titleBar : HTMLElement = makeDiv(tbDim);
     titleBar.innerHTML = "<h1>You are red. Goal is blue. Obstacles are black. </br>" +
                          "Joinable obstacles are green. Use arrow keys. R to reset</h1>";
     document.body.appendChild(titleBar);
     populateGameBoard({ width: G.width, height: G.height / 1.5 - tbDim.height});
-    G.resetPuzzle(level1);
+    G.loadPuzzles();
+    G.resetPuzzle();
 }
 document.body.onload = main;
