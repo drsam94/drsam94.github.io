@@ -277,6 +277,7 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
                     if (current > 0) {
                         ret.push(current);
                     }
+                    current = 0;
                 }
                 else {
                     current += 1;

@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "noImplicitAny" : true,
+        "removeComments": true,
+        "strictFunctionTypes": true,
+        "noImplicitThis": true,
+        "alwaysStrict": true,
+        "noUnusedLocals": true,
+        "noImplicitReturns": true,
+        "strict": true,
+        "charset": "ASCII",
+        "diagnostics": true,
+        "extendedDiagnostics": true,
+        "pretty": true,
+        "module": "AMD",
+        "outFile": "build/game3.js"
+    },
+    "files" : [
+        "src/game3.ts",
+        "src/GUITypes.ts",
+    ]
+}
