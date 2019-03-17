@@ -17,7 +17,7 @@ class Globals {
     private cursor? : Block;
     public labels? : Labels;
     constructor() {
-        this.width =  document.body.getBoundingClientRect().width;
+        this.width = document.body.getBoundingClientRect().width;
         this.height = document.body.getBoundingClientRect().height;
         this.gridSize = 10;
         this.allowInput = true;
@@ -45,12 +45,10 @@ class Globals {
     }
     public makeMove(dir : Direction) : void {
         G.allowInput = false;
-        const blck =  this.getBlockInDirection(this.getCursor().loc, dir);
+        const blck = this.getBlockInDirection(this.getCursor().loc, dir);
         if (blck !== null) {
             this.setCursor(blck);
         }
-        // Check if the player has won
-        this.checkWin();
         G.allowInput = true;
     }
 
@@ -59,7 +57,7 @@ class Globals {
         for (let i : number = 0; i < this.grid.length; i += 1) {
             for (let j : number = 0; j < this.grid.length; j += 1) {
                 const state = this.grid[i][j].state;
-                const c     = puzzle[i].charAt(j);
+                const c = puzzle[i].charAt(j);
                 if (c === "1" && state !== BlockType.Filled) {
                     return;
                 }
@@ -79,17 +77,19 @@ class Globals {
     }
 
     public toggleCurrent() {
-        const type = (function (ty : BlockType) {
-        switch (ty) {
-            case BlockType.Empty:
-                return BlockType.Filled;
-            case BlockType.Filled:
-                return BlockType.Flagged;
-            case BlockType.Flagged:
-                return BlockType.Empty;
-        }})(this.getCursor().state);
+        const type = (function(ty : BlockType) {
+            switch (ty) {
+                case BlockType.Empty:
+                    return BlockType.Filled;
+                case BlockType.Filled:
+                    return BlockType.Flagged;
+                case BlockType.Flagged:
+                    return BlockType.Empty;
+            }
+        })(this.getCursor().state);
         this.getCursor().state = type;
         this.getCursor().updateDisplay();
+        this.checkWin();
     }
 
     public resetPuzzle(puzzle? : PuzzleDescription) : void {
@@ -115,16 +115,16 @@ class Globals {
 
     public loadPuzzles() : void {
         const level1 : string[] = [
-        "0001100000",
-        "0001100000",
-        "0000000000",
-        "0000000000",
-        "0000000000",
-        "0000000000",
-        "0000000000",
-        "0000000000",
-        "0000000000",
-        "0000000000"
+            "0001100000",
+            "0001100000",
+            "0000000000",
+            "0000000000",
+            "0000000000",
+            "0000000000",
+            "0000000000",
+            "0000000000",
+            "0000000000",
+            "0000000000"
         ];
 
         this.levels = [level1];
@@ -192,15 +192,20 @@ function makeDiv(dim : Dims) : HTMLElement {
     return ret;
 }
 
-function makeBlock(parentDims: Dims) : HTMLElement {
-    return makeDiv({ width  :  (parentDims.width) / G.gridSize - 10,
-                     height :  (parentDims.height) / G.gridSize - 10});
+function makeBlock(parentDims : Dims) : HTMLElement {
+    const ret = makeDiv({
+        width: (parentDims.width) / (G.gridSize + 1) - 11,
+        height: (parentDims.height) / (G.gridSize + 1) - 11
+    });
+    ret.style.borderWidth = "5px 5px 5px 5px";
+    ret.style.border = "5px solid #FFFFFF";
+    return ret;
 }
 
 enum BlockType {
     Empty,
     Filled,
-    Flagged,
+    Flagged
 }
 
 class Label {
@@ -213,6 +218,9 @@ class Label {
 
     public setLabel(lbl : number[]) : void {
         this.node.textContent = lbl.join(" ");
+        if (this.node.textContent === "") {
+            this.node.textContent = "_";
+        }
     }
 }
 
@@ -230,18 +238,18 @@ class Labels {
     }
 
     public setLabels(puzzle : PuzzleDescription) : void {
-        if (this.rows.length != puzzle.length || this.cols.length != puzzle[0].length) {
+        if (this.rows.length !== puzzle.length || this.cols.length !== puzzle[0].length) {
             throw new Error("Bad puzzle dimensions");
         }
         const colStrs : string[] = [];
-        for (let i : number = 0; i < this.cols.length; i += 1) {
+        for (const _ of this.cols) {
             colStrs.push("");
         }
-        for (let i : number = 0 ; i < this.rows.length; i += 1) {
-            const row  = puzzle[i];
+        for (let i : number = 0; i < this.rows.length; i += 1) {
+            const row = puzzle[i];
             this.rows[i].setLabel(Labels.getLabel(row));
             for (let j : number = 0; j < this.cols.length; j += 1) {
-                colStrs[j] += row[j]; 
+                colStrs[j] += row[j];
             }
         }
         for (let i : number = 0; i < this.cols.length; i += 1) {
@@ -249,11 +257,11 @@ class Labels {
         }
     }
 
-    public static getLabel(data: string) : number[] {
-        const ret: number[] = [];
+    public static getLabel(data : string) : number[] {
+        const ret : number[] = [];
         let current = 0;
         for (let i : number = 0; i < data.length; i += 1) {
-            if (data.charAt(i) == '0') {
+            if (data.charAt(i) === '0') {
                 if (current > 0) {
                     ret.push(current);
                 }
@@ -267,7 +275,7 @@ class Labels {
         }
         return ret;
     }
-    
+
 }
 
 class Block {
@@ -312,7 +320,7 @@ class Block {
     }
 }
 
-function onKeyEvent(evt : KeyCode) : void  {
+function onKeyEvent(evt : KeyCode) : void {
     if (!G.isInputAllowed()) {
         return;
     }
@@ -350,9 +358,12 @@ document.body.onkeydown = function(evt : KeyboardEvent) : void { onKeyEvent(evt.
 function populateGameBoard(rootDims : Dims) : void {
     G.labels = new Labels();
     const rootNode : HTMLElement = makeDiv(rootDims);
-    const childDims : Dims = { width : rootDims.height * 1.2, height : rootDims.height * 1.3 };
+    const childDims : Dims = { width: rootDims.height, height: rootDims.height };
     const locDiv : HTMLElement = makeDiv(childDims);
-    const topLabelDiv = makeDiv({ width : rootDims.height * 1.2, height: rootDims.height * 0.3});
+    const topLabelDiv = makeDiv({ width: rootDims.width, height: childDims.height / 11 });
+    const topLeftCorner = makeBlock(childDims);
+    topLeftCorner.textContent = "*";
+    topLabelDiv.appendChild(topLeftCorner);
     for (let i : number = 0; i < G.gridSize; ++i) {
         G.labels.addLabel(childDims, topLabelDiv, false);
     }
@@ -382,7 +393,7 @@ function main() : void {
     const titleBar : HTMLElement = makeDiv(tbDim);
     titleBar.innerHTML = "<h1>Picross. </br> </h1>";
     document.body.appendChild(titleBar);
-    populateGameBoard({ width: G.width, height: G.height / 1.5 - tbDim.height});
+    populateGameBoard({ width: G.width, height: G.height / 1.5 - tbDim.height });
     G.loadPuzzles();
     G.resetPuzzle();
 }

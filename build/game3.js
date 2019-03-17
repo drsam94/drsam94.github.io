@@ -88,7 +88,6 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
             if (blck !== null) {
                 this.setCursor(blck);
             }
-            this.checkWin();
             G.allowInput = true;
         };
         Globals.prototype.checkWin = function () {
@@ -125,6 +124,7 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
             })(this.getCursor().state);
             this.getCursor().state = type;
             this.getCursor().updateDisplay();
+            this.checkWin();
         };
         Globals.prototype.resetPuzzle = function (puzzle) {
             if (puzzle !== undefined) {
@@ -221,8 +221,13 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
         return ret;
     }
     function makeBlock(parentDims) {
-        return makeDiv({ width: (parentDims.width) / G.gridSize - 10,
-            height: (parentDims.height) / G.gridSize - 10 });
+        var ret = makeDiv({
+            width: (parentDims.width) / (G.gridSize + 1) - 11,
+            height: (parentDims.height) / (G.gridSize + 1) - 11
+        });
+        ret.style.borderWidth = "5px 5px 5px 5px";
+        ret.style.border = "5px solid #FFFFFF";
+        return ret;
     }
     var BlockType;
     (function (BlockType) {
@@ -237,6 +242,9 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
         }
         Label.prototype.setLabel = function (lbl) {
             this.node.textContent = lbl.join(" ");
+            if (this.node.textContent === "") {
+                this.node.textContent = "_";
+            }
         };
         return Label;
     }());
@@ -251,11 +259,12 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
             arr.push(newLabel);
         };
         Labels.prototype.setLabels = function (puzzle) {
-            if (this.rows.length != puzzle.length || this.cols.length != puzzle[0].length) {
+            if (this.rows.length !== puzzle.length || this.cols.length !== puzzle[0].length) {
                 throw new Error("Bad puzzle dimensions");
             }
             var colStrs = [];
-            for (var i = 0; i < this.cols.length; i += 1) {
+            for (var _i = 0, _a = this.cols; _i < _a.length; _i++) {
+                var _ = _a[_i];
                 colStrs.push("");
             }
             for (var i = 0; i < this.rows.length; i += 1) {
@@ -273,7 +282,7 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
             var ret = [];
             var current = 0;
             for (var i = 0; i < data.length; i += 1) {
-                if (data.charAt(i) == '0') {
+                if (data.charAt(i) === '0') {
                     if (current > 0) {
                         ret.push(current);
                     }
@@ -364,9 +373,12 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
     function populateGameBoard(rootDims) {
         G.labels = new Labels();
         var rootNode = makeDiv(rootDims);
-        var childDims = { width: rootDims.height * 1.2, height: rootDims.height * 1.3 };
+        var childDims = { width: rootDims.height, height: rootDims.height };
         var locDiv = makeDiv(childDims);
-        var topLabelDiv = makeDiv({ width: rootDims.height * 1.2, height: rootDims.height * 0.3 });
+        var topLabelDiv = makeDiv({ width: rootDims.width, height: childDims.height / 11 });
+        var topLeftCorner = makeBlock(childDims);
+        topLeftCorner.textContent = "*";
+        topLabelDiv.appendChild(topLeftCorner);
         for (var i = 0; i < G.gridSize; ++i) {
             G.labels.addLabel(childDims, topLabelDiv, false);
         }
