@@ -1,6 +1,7 @@
 
 // Non-confidential and non-proprietary information of Sam Donow
 import { Coords, Direction, Dims, Color } from "./GUITypes";
+// import { MersenneTwister } from "../3ps/MersenneTwister";
 
 type PuzzleDescription = string[];
 
@@ -76,13 +77,12 @@ class Globals {
         block.updateDisplay();
     }
 
-    public toggleCurrent() {
+    public toggleCurrent(active : boolean) {
         const type = (function(ty : BlockType) {
             switch (ty) {
                 case BlockType.Empty:
-                    return BlockType.Filled;
+                    return active ? BlockType.Filled : BlockType.Flagged;
                 case BlockType.Filled:
-                    return BlockType.Flagged;
                 case BlockType.Flagged:
                     return BlockType.Empty;
             }
@@ -113,7 +113,21 @@ class Globals {
         }
     }
 
+    // private rnd = new MersenneTwister(1);
+    public randomPuzzle(dims : Dims) : PuzzleDescription {
+        const rows : PuzzleDescription = [];
+        for (let i = 0; i < dims.height; ++i) {
+            let row : string = "";
+            for (let j = 0; j < dims.width; ++j) {
+                row += (Math.random() > 0.5) ? "0" : "1";
+            }
+            rows.push(row);
+        }
+        return rows;
+    }
+
     public loadPuzzles() : void {
+        /*
         const level1 : string[] = [
             "0001100000",
             "0001100000",
@@ -123,11 +137,12 @@ class Globals {
             "0000000000",
             "0000000000",
             "0000000000",
-            "0000000000",
-            "0000000000"
+            "0001100010",
+            "0001100000"
         ];
+        */
 
-        this.levels = [level1];
+        this.levels = [this.randomPuzzle({ width: 10, height: 10})];
     }
 
     private currentPuzzle() : PuzzleDescription {
@@ -181,7 +196,9 @@ enum KeyCode {
     A = 'A'.charCodeAt(0),
     S = 'S'.charCodeAt(0),
     D = 'D'.charCodeAt(0),
-    R = 'R'.charCodeAt(0)
+    R = 'R'.charCodeAt(0),
+    Z = 'Z'.charCodeAt(0),
+    X = 'X'.charCodeAt(0)
 }
 
 function makeDiv(dim : Dims) : HTMLElement {
@@ -213,12 +230,14 @@ class Label {
 
     constructor(parentDims : Dims, parent : HTMLElement) {
         this.node = makeBlock(parentDims);
+        this.node.style.textAlign = "center";
         parent.appendChild(this.node);
     }
 
-    public setLabel(lbl : number[]) : void {
-        this.node.textContent = lbl.join(" ");
-        if (this.node.textContent === "") {
+    public setLabel(lbl : number[], vertical : boolean) : void {
+        const joinChar = vertical ? "</br>" : " ";
+        this.node.innerHTML = lbl.join(joinChar);
+        if (lbl.length === 0) {
             this.node.textContent = "_";
         }
     }
@@ -247,13 +266,13 @@ class Labels {
         }
         for (let i : number = 0; i < this.rows.length; i += 1) {
             const row = puzzle[i];
-            this.rows[i].setLabel(Labels.getLabel(row));
+            this.rows[i].setLabel(Labels.getLabel(row), false);
             for (let j : number = 0; j < this.cols.length; j += 1) {
                 colStrs[j] += row[j];
             }
         }
         for (let i : number = 0; i < this.cols.length; i += 1) {
-            this.cols[i].setLabel(Labels.getLabel(colStrs[i]));
+            this.cols[i].setLabel(Labels.getLabel(colStrs[i]), true);
         }
     }
 
@@ -346,7 +365,11 @@ function onKeyEvent(evt : KeyCode) : void {
             G.resetPuzzle();
             return;
         case KeyCode.Enter:
-            G.toggleCurrent();
+        case KeyCode.Z:
+            G.toggleCurrent(true);
+            return;
+        case KeyCode.X:
+            G.toggleCurrent(false);
             return;
         default:
             return;
@@ -360,7 +383,7 @@ function populateGameBoard(rootDims : Dims) : void {
     const rootNode : HTMLElement = makeDiv(rootDims);
     const childDims : Dims = { width: rootDims.height, height: rootDims.height };
     const locDiv : HTMLElement = makeDiv(childDims);
-    const topLabelDiv = makeDiv({ width: rootDims.width, height: childDims.height / 11 });
+    const topLabelDiv = makeDiv({ width: rootDims.width, height: childDims.height / 5 });
     const topLeftCorner = makeBlock(childDims);
     topLeftCorner.textContent = "*";
     topLabelDiv.appendChild(topLeftCorner);

@@ -111,13 +111,12 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
             block.state = state;
             block.updateDisplay();
         };
-        Globals.prototype.toggleCurrent = function () {
+        Globals.prototype.toggleCurrent = function (active) {
             var type = (function (ty) {
                 switch (ty) {
                     case BlockType.Empty:
-                        return BlockType.Filled;
+                        return active ? BlockType.Filled : BlockType.Flagged;
                     case BlockType.Filled:
-                        return BlockType.Flagged;
                     case BlockType.Flagged:
                         return BlockType.Empty;
                 }
@@ -146,20 +145,19 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
                 G.labels.setLabels(puzzle);
             }
         };
+        Globals.prototype.randomPuzzle = function (dims) {
+            var rows = [];
+            for (var i = 0; i < dims.height; ++i) {
+                var row = "";
+                for (var j = 0; j < dims.width; ++j) {
+                    row += (Math.random() > 0.5) ? "0" : "1";
+                }
+                rows.push(row);
+            }
+            return rows;
+        };
         Globals.prototype.loadPuzzles = function () {
-            var level1 = [
-                "0001100000",
-                "0001100000",
-                "0000000000",
-                "0000000000",
-                "0000000000",
-                "0000000000",
-                "0000000000",
-                "0000000000",
-                "0000000000",
-                "0000000000"
-            ];
-            this.levels = [level1];
+            this.levels = [this.randomPuzzle({ width: 10, height: 10 })];
         };
         Globals.prototype.currentPuzzle = function () {
             return this.levels[this.currentPuzzleIdx];
@@ -212,6 +210,8 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
         KeyCode[KeyCode["S"] = 'S'.charCodeAt(0)] = "S";
         KeyCode[KeyCode["D"] = 'D'.charCodeAt(0)] = "D";
         KeyCode[KeyCode["R"] = 'R'.charCodeAt(0)] = "R";
+        KeyCode[KeyCode["Z"] = 'Z'.charCodeAt(0)] = "Z";
+        KeyCode[KeyCode["X"] = 'X'.charCodeAt(0)] = "X";
     })(KeyCode || (KeyCode = {}));
     function makeDiv(dim) {
         var ret = document.createElement("div");
@@ -238,11 +238,13 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
     var Label = (function () {
         function Label(parentDims, parent) {
             this.node = makeBlock(parentDims);
+            this.node.style.textAlign = "center";
             parent.appendChild(this.node);
         }
-        Label.prototype.setLabel = function (lbl) {
-            this.node.textContent = lbl.join(" ");
-            if (this.node.textContent === "") {
+        Label.prototype.setLabel = function (lbl, vertical) {
+            var joinChar = vertical ? "</br>" : " ";
+            this.node.innerHTML = lbl.join(joinChar);
+            if (lbl.length === 0) {
                 this.node.textContent = "_";
             }
         };
@@ -269,13 +271,13 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
             }
             for (var i = 0; i < this.rows.length; i += 1) {
                 var row = puzzle[i];
-                this.rows[i].setLabel(Labels.getLabel(row));
+                this.rows[i].setLabel(Labels.getLabel(row), false);
                 for (var j = 0; j < this.cols.length; j += 1) {
                     colStrs[j] += row[j];
                 }
             }
             for (var i = 0; i < this.cols.length; i += 1) {
-                this.cols[i].setLabel(Labels.getLabel(colStrs[i]));
+                this.cols[i].setLabel(Labels.getLabel(colStrs[i]), true);
             }
         };
         Labels.getLabel = function (data) {
@@ -362,7 +364,11 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
                 G.resetPuzzle();
                 return;
             case KeyCode.Enter:
-                G.toggleCurrent();
+            case KeyCode.Z:
+                G.toggleCurrent(true);
+                return;
+            case KeyCode.X:
+                G.toggleCurrent(false);
                 return;
             default:
                 return;
@@ -375,7 +381,7 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
         var rootNode = makeDiv(rootDims);
         var childDims = { width: rootDims.height, height: rootDims.height };
         var locDiv = makeDiv(childDims);
-        var topLabelDiv = makeDiv({ width: rootDims.width, height: childDims.height / 11 });
+        var topLabelDiv = makeDiv({ width: rootDims.width, height: childDims.height / 5 });
         var topLeftCorner = makeBlock(childDims);
         topLeftCorner.textContent = "*";
         topLabelDiv.appendChild(topLeftCorner);
