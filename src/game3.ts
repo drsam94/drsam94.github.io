@@ -271,17 +271,23 @@ class Label {
     public setFlags(data : string) : boolean {
         // TODO: break this up to be able to flag individual numbers
         const currentLabel = Label.getLabel(data);
-        if (this.val.length !== currentLabel.length) {
-            this.node.style.color = "black";
-            return false;
-        }
-        for (let i : number = 0; i < currentLabel.length; ++i) {
-            if (this.val[i] !== currentLabel[i]) {
+        for (const c of data) {
+            if (c === '_') {
                 this.node.style.color = "black";
                 return false;
             }
         }
-        this.node.style.color = "red";
+        if (this.val.length !== currentLabel.length) {
+            this.node.style.color = "red";
+            return false;
+        }
+        for (let i : number = 0; i < currentLabel.length; ++i) {
+            if (this.val[i] !== currentLabel[i]) {
+                this.node.style.color = "red";
+                return false;
+            }
+        }
+        this.node.style.color = "blue";
         return true;
     }
 

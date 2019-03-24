@@ -13,7 +13,8 @@
         "extendedDiagnostics": true,
         "pretty": true,
         "module": "AMD",
-        "outFile": "build/game3.js"
+        "outFile": "build/game3.js",
+        "target" : "es5"
     },
     "files" : [
         "src/game3.ts",

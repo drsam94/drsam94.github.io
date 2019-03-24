@@ -1,6 +1,6 @@
 define("GUITypes", ["require", "exports"], function (require, exports) {
     "use strict";
-    exports.__esModule = true;
+    Object.defineProperty(exports, "__esModule", { value: true });
     var Color = (function () {
         function Color(red, green, blue) {
             this.r = red;
@@ -54,7 +54,7 @@ define("GUITypes", ["require", "exports"], function (require, exports) {
 });
 define("game3", ["require", "exports", "GUITypes"], function (require, exports, GUITypes_1) {
     "use strict";
-    exports.__esModule = true;
+    Object.defineProperty(exports, "__esModule", { value: true });
     var Globals = (function () {
         function Globals() {
             this.width = document.body.getBoundingClientRect().width;
@@ -274,17 +274,24 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
         };
         Label.prototype.setFlags = function (data) {
             var currentLabel = Label.getLabel(data);
-            if (this.val.length !== currentLabel.length) {
-                this.node.style.color = "black";
-                return false;
-            }
-            for (var i = 0; i < currentLabel.length; ++i) {
-                if (this.val[i] !== currentLabel[i]) {
+            for (var _i = 0, data_1 = data; _i < data_1.length; _i++) {
+                var c = data_1[_i];
+                if (c === '_') {
                     this.node.style.color = "black";
                     return false;
                 }
             }
-            this.node.style.color = "red";
+            if (this.val.length !== currentLabel.length) {
+                this.node.style.color = "red";
+                return false;
+            }
+            for (var i = 0; i < currentLabel.length; ++i) {
+                if (this.val[i] !== currentLabel[i]) {
+                    this.node.style.color = "red";
+                    return false;
+                }
+            }
+            this.node.style.color = "blue";
             return true;
         };
         Label.getLabel = function (data) {
