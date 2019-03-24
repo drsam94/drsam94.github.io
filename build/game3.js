@@ -91,17 +91,39 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
             G.allowInput = true;
         };
         Globals.prototype.checkWin = function () {
+            if (this.labels === undefined) {
+                return;
+            }
             var puzzle = this.levels[this.currentPuzzleIdx];
-            for (var i = 0; i < this.grid.length; i += 1) {
-                for (var j = 0; j < this.grid.length; j += 1) {
+            var strBoard = new Array(puzzle.length);
+            for (var i = 0; i < this.grid.length; ++i) {
+                strBoard[i] = "";
+                for (var j = 0; j < this.grid.length; ++j) {
                     var state = this.grid[i][j].state;
-                    var c = puzzle[i].charAt(j);
-                    if (c === "1" && state !== BlockType.Filled) {
-                        return;
+                    if (state === BlockType.Filled) {
+                        strBoard[i] += '1';
+                    }
+                    else if (state === BlockType.Flagged) {
+                        strBoard[i] += "0";
+                    }
+                    else {
+                        strBoard[i] += "_";
                     }
                 }
             }
-            this.youWin();
+            var cols = Labels.extractCols(strBoard);
+            var hasWon = true;
+            for (var i = 0; i < puzzle.length; ++i) {
+                if (!this.labels.check(strBoard[i], i, true)) {
+                    hasWon = false;
+                }
+                if (!this.labels.check(cols[i], i, false)) {
+                    hasWon = false;
+                }
+            }
+            if (hasWon) {
+                this.youWin();
+            }
         };
         Globals.prototype.isInputAllowed = function () {
             return this.allowInput;
@@ -150,7 +172,7 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
             for (var i = 0; i < dims.height; ++i) {
                 var row = "";
                 for (var j = 0; j < dims.width; ++j) {
-                    row += (Math.random() > 0.5) ? "0" : "1";
+                    row += Math.random() > 0.5 ? "0" : "1";
                 }
                 rows.push(row);
             }
@@ -237,6 +259,7 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
     })(BlockType || (BlockType = {}));
     var Label = (function () {
         function Label(parentDims, parent) {
+            this.val = [];
             this.node = makeBlock(parentDims);
             this.node.style.textAlign = "center";
             parent.appendChild(this.node);
@@ -245,8 +268,46 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
             var joinChar = vertical ? "</br>" : " ";
             this.node.innerHTML = lbl.join(joinChar);
             if (lbl.length === 0) {
-                this.node.textContent = "_";
+                this.node.innerHTML = "0";
             }
+            this.val = lbl;
+        };
+        Label.prototype.setFlags = function (data) {
+            var currentLabel = Label.getLabel(data);
+            if (this.val.length !== currentLabel.length) {
+                this.node.style.color = "black";
+                return false;
+            }
+            for (var i = 0; i < currentLabel.length; ++i) {
+                if (this.val[i] !== currentLabel[i]) {
+                    this.node.style.color = "black";
+                    return false;
+                }
+            }
+            this.node.style.color = "red";
+            return true;
+        };
+        Label.getLabel = function (data) {
+            var ret = [];
+            var current = 0;
+            for (var i = 0; i < data.length; ++i) {
+                if (data.charAt(i) === '0') {
+                    if (current > 0) {
+                        ret.push(current);
+                    }
+                    current = 0;
+                }
+                else if (data.charAt(i) === '1') {
+                    current += 1;
+                }
+                else {
+                    return [];
+                }
+            }
+            if (current > 0) {
+                ret.push(current);
+            }
+            return ret;
         };
         return Label;
     }());
@@ -260,44 +321,39 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
             var arr = isRow ? this.rows : this.cols;
             arr.push(newLabel);
         };
+        Labels.extractCols = function (puzzle) {
+            var colStrs = [];
+            for (var _i = 0, puzzle_1 = puzzle; _i < puzzle_1.length; _i++) {
+                var _ = puzzle_1[_i];
+                colStrs.push("");
+            }
+            for (var _a = 0, puzzle_2 = puzzle; _a < puzzle_2.length; _a++) {
+                var row = puzzle_2[_a];
+                for (var j = 0; j < row.length; j += 1) {
+                    colStrs[j] += row[j];
+                }
+            }
+            return colStrs;
+        };
         Labels.prototype.setLabels = function (puzzle) {
             if (this.rows.length !== puzzle.length || this.cols.length !== puzzle[0].length) {
                 throw new Error("Bad puzzle dimensions");
             }
-            var colStrs = [];
-            for (var _i = 0, _a = this.cols; _i < _a.length; _i++) {
-                var _ = _a[_i];
-                colStrs.push("");
+            for (var i = 0; i < this.rows.length; ++i) {
+                this.rows[i].setLabel(Label.getLabel(puzzle[i]), false);
             }
-            for (var i = 0; i < this.rows.length; i += 1) {
-                var row = puzzle[i];
-                this.rows[i].setLabel(Labels.getLabel(row), false);
-                for (var j = 0; j < this.cols.length; j += 1) {
-                    colStrs[j] += row[j];
-                }
-            }
-            for (var i = 0; i < this.cols.length; i += 1) {
-                this.cols[i].setLabel(Labels.getLabel(colStrs[i]), true);
+            var colStrs = Labels.extractCols(puzzle);
+            for (var i = 0; i < this.cols.length; ++i) {
+                this.cols[i].setLabel(Label.getLabel(colStrs[i]), true);
             }
         };
-        Labels.getLabel = function (data) {
-            var ret = [];
-            var current = 0;
-            for (var i = 0; i < data.length; i += 1) {
-                if (data.charAt(i) === '0') {
-                    if (current > 0) {
-                        ret.push(current);
-                    }
-                    current = 0;
-                }
-                else {
-                    current += 1;
-                }
+        Labels.prototype.check = function (data, i, isRow) {
+            if (isRow) {
+                return this.rows[i].setFlags(data);
             }
-            if (current > 0) {
-                ret.push(current);
+            else {
+                return this.cols[i].setFlags(data);
             }
-            return ret;
         };
         return Labels;
     }());

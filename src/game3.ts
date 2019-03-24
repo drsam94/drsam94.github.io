@@ -54,17 +54,40 @@ class Globals {
     }
 
     private checkWin() : void {
+        if (this.labels === undefined) {
+            return;
+        }
+        /// TODO: track this information better so we don't have to constantly do this
+        /// costly recreation of state
         const puzzle = this.levels[this.currentPuzzleIdx];
-        for (let i : number = 0; i < this.grid.length; i += 1) {
-            for (let j : number = 0; j < this.grid.length; j += 1) {
+        const strBoard : string[] = new Array(puzzle.length);
+
+        for (let i : number = 0; i < this.grid.length; ++i) {
+            strBoard[i] = "";
+            for (let j : number = 0; j < this.grid.length; ++j) {
                 const state = this.grid[i][j].state;
-                const c = puzzle[i].charAt(j);
-                if (c === "1" && state !== BlockType.Filled) {
-                    return;
+                if (state === BlockType.Filled) {
+                    strBoard[i] += '1';
+                } else if (state === BlockType.Flagged) {
+                    strBoard[i] += "0";
+                } else {
+                    strBoard[i] += "_";
                 }
             }
         }
-        this.youWin();
+        const cols = Labels.extractCols(strBoard);
+        let hasWon = true;
+        for (let i : number = 0; i < puzzle.length; ++i) {
+            if (!this.labels.check(strBoard[i], i, true)) {
+                hasWon = false;
+            }
+            if (!this.labels.check(cols[i], i, false)) {
+                hasWon = false;
+            }
+        }
+        if (hasWon) {
+            this.youWin();
+        }
     }
 
     public isInputAllowed() : boolean {
@@ -119,7 +142,7 @@ class Globals {
         for (let i = 0; i < dims.height; ++i) {
             let row : string = "";
             for (let j = 0; j < dims.width; ++j) {
-                row += (Math.random() > 0.5) ? "0" : "1";
+                row += Math.random() > 0.5 ? "0" : "1";
             }
             rows.push(row);
         }
@@ -227,6 +250,7 @@ enum BlockType {
 
 class Label {
     public node : HTMLElement;
+    private val : number[] = [];
 
     constructor(parentDims : Dims, parent : HTMLElement) {
         this.node = makeBlock(parentDims);
@@ -238,8 +262,48 @@ class Label {
         const joinChar = vertical ? "</br>" : " ";
         this.node.innerHTML = lbl.join(joinChar);
         if (lbl.length === 0) {
-            this.node.textContent = "_";
+            this.node.innerHTML = "0";
         }
+        // The ownership here is kind of scary
+        this.val = lbl;
+    }
+
+    public setFlags(data : string) : boolean {
+        // TODO: break this up to be able to flag individual numbers
+        const currentLabel = Label.getLabel(data);
+        if (this.val.length !== currentLabel.length) {
+            this.node.style.color = "black";
+            return false;
+        }
+        for (let i : number = 0; i < currentLabel.length; ++i) {
+            if (this.val[i] !== currentLabel[i]) {
+                this.node.style.color = "black";
+                return false;
+            }
+        }
+        this.node.style.color = "red";
+        return true;
+    }
+
+    public static getLabel(data : string) : number[] {
+        const ret : number[] = [];
+        let current = 0;
+        for (let i : number = 0; i < data.length; ++i) {
+            if (data.charAt(i) === '0') {
+                if (current > 0) {
+                    ret.push(current);
+                }
+                current = 0;
+            } else if (data.charAt(i) === '1') {
+                current += 1;
+            } else {
+                return [];
+            }
+        }
+        if (current > 0) {
+            ret.push(current);
+        }
+        return ret;
     }
 }
 
@@ -256,45 +320,41 @@ class Labels {
         arr.push(newLabel);
     }
 
+    public static extractCols(puzzle : PuzzleDescription) : string[] {
+        const colStrs : string[] = [];
+        for (const _ of puzzle) {
+            colStrs.push("");
+        }
+
+        for (const row of puzzle) {
+            for (let j : number = 0; j < row.length; j += 1) {
+                colStrs[j] += row[j];
+            }
+        }
+        return colStrs;
+    }
+
     public setLabels(puzzle : PuzzleDescription) : void {
         if (this.rows.length !== puzzle.length || this.cols.length !== puzzle[0].length) {
             throw new Error("Bad puzzle dimensions");
         }
-        const colStrs : string[] = [];
-        for (const _ of this.cols) {
-            colStrs.push("");
+
+        for (let i = 0; i < this.rows.length; ++i) {
+            this.rows[i].setLabel(Label.getLabel(puzzle[i]), false);
         }
-        for (let i : number = 0; i < this.rows.length; i += 1) {
-            const row = puzzle[i];
-            this.rows[i].setLabel(Labels.getLabel(row), false);
-            for (let j : number = 0; j < this.cols.length; j += 1) {
-                colStrs[j] += row[j];
-            }
-        }
-        for (let i : number = 0; i < this.cols.length; i += 1) {
-            this.cols[i].setLabel(Labels.getLabel(colStrs[i]), true);
+        const colStrs = Labels.extractCols(puzzle);
+        for (let i = 0; i < this.cols.length; ++i) {
+            this.cols[i].setLabel(Label.getLabel(colStrs[i]), true);
         }
     }
 
-    public static getLabel(data : string) : number[] {
-        const ret : number[] = [];
-        let current = 0;
-        for (let i : number = 0; i < data.length; i += 1) {
-            if (data.charAt(i) === '0') {
-                if (current > 0) {
-                    ret.push(current);
-                }
-                current = 0;
-            } else {
-                current += 1;
-            }
+    public check(data : string, i : number, isRow : boolean) : boolean {
+        if (isRow) {
+            return this.rows[i].setFlags(data);
+        } else {
+            return this.cols[i].setFlags(data);
         }
-        if (current > 0) {
-            ret.push(current);
-        }
-        return ret;
     }
-
 }
 
 class Block {
