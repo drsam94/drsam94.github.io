@@ -150,21 +150,6 @@ class Globals {
     }
 
     public loadPuzzles() : void {
-        /*
-        const level1 : string[] = [
-            "0001100000",
-            "0001100000",
-            "0000000000",
-            "0000000000",
-            "0000000000",
-            "0000000000",
-            "0000000000",
-            "0000000000",
-            "0001100010",
-            "0001100000"
-        ];
-        */
-
         this.levels = [this.randomPuzzle({ width: 10, height: 10})];
     }
 
@@ -232,9 +217,9 @@ function makeDiv(dim : Dims) : HTMLElement {
     return ret;
 }
 
-function makeBlock(parentDims : Dims) : HTMLElement {
+function makeBlock(parentDims : Dims, doubleWidth : boolean = false) : HTMLElement {
     const ret = makeDiv({
-        width: (parentDims.width) / (G.gridSize + 1) - 11,
+        width: (parentDims.width * (doubleWidth ? 2 : 1)) / (G.gridSize + 2) - 11,
         height: (parentDims.height) / (G.gridSize + 1) - 11
     });
     ret.style.borderWidth = "5px 5px 5px 5px";
@@ -252,8 +237,8 @@ class Label {
     public node : HTMLElement;
     private val : number[] = [];
 
-    constructor(parentDims : Dims, parent : HTMLElement) {
-        this.node = makeBlock(parentDims);
+    constructor(parentDims : Dims, parent : HTMLElement, isRow : boolean = false) {
+        this.node = makeBlock(parentDims, isRow);
         this.node.style.textAlign = "center";
         parent.appendChild(this.node);
     }
@@ -321,7 +306,7 @@ class Labels {
 
     }
     public addLabel(parentDims : Dims, parent : HTMLElement, isRow : boolean) {
-        const newLabel = new Label(parentDims, parent);
+        const newLabel = new Label(parentDims, parent, isRow);
         const arr = isRow ? this.rows : this.cols;
         arr.push(newLabel);
     }
@@ -450,7 +435,7 @@ function populateGameBoard(rootDims : Dims) : void {
     const childDims : Dims = { width: rootDims.height, height: rootDims.height };
     const locDiv : HTMLElement = makeDiv(childDims);
     const topLabelDiv = makeDiv({ width: rootDims.width, height: childDims.height / 5 });
-    const topLeftCorner = makeBlock(childDims);
+    const topLeftCorner = makeBlock(childDims, true);
     topLeftCorner.textContent = "*";
     topLabelDiv.appendChild(topLeftCorner);
     for (let i : number = 0; i < G.gridSize; ++i) {

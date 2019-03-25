@@ -242,9 +242,10 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
         ret.style.cssFloat = "left";
         return ret;
     }
-    function makeBlock(parentDims) {
+    function makeBlock(parentDims, doubleWidth) {
+        if (doubleWidth === void 0) { doubleWidth = false; }
         var ret = makeDiv({
-            width: (parentDims.width) / (G.gridSize + 1) - 11,
+            width: (parentDims.width * (doubleWidth ? 2 : 1)) / (G.gridSize + 2) - 11,
             height: (parentDims.height) / (G.gridSize + 1) - 11
         });
         ret.style.borderWidth = "5px 5px 5px 5px";
@@ -258,9 +259,10 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
         BlockType[BlockType["Flagged"] = 2] = "Flagged";
     })(BlockType || (BlockType = {}));
     var Label = (function () {
-        function Label(parentDims, parent) {
+        function Label(parentDims, parent, isRow) {
+            if (isRow === void 0) { isRow = false; }
             this.val = [];
-            this.node = makeBlock(parentDims);
+            this.node = makeBlock(parentDims, isRow);
             this.node.style.textAlign = "center";
             parent.appendChild(this.node);
         }
@@ -324,7 +326,7 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
             this.cols = [];
         }
         Labels.prototype.addLabel = function (parentDims, parent, isRow) {
-            var newLabel = new Label(parentDims, parent);
+            var newLabel = new Label(parentDims, parent, isRow);
             var arr = isRow ? this.rows : this.cols;
             arr.push(newLabel);
         };
@@ -445,7 +447,7 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
         var childDims = { width: rootDims.height, height: rootDims.height };
         var locDiv = makeDiv(childDims);
         var topLabelDiv = makeDiv({ width: rootDims.width, height: childDims.height / 5 });
-        var topLeftCorner = makeBlock(childDims);
+        var topLeftCorner = makeBlock(childDims, true);
         topLeftCorner.textContent = "*";
         topLabelDiv.appendChild(topLeftCorner);
         for (var i = 0; i < G.gridSize; ++i) {
