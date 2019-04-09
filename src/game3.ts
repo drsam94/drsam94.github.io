@@ -5,6 +5,12 @@ import { Coords, Direction, Dims, Color } from "./GUITypes";
 
 type PuzzleDescription = string[];
 
+enum BlockType {
+    Empty,
+    Filled,
+    Flagged
+}
+
 /// Singleton class for storing various globals
 class Globals {
     public width : number;
@@ -227,12 +233,6 @@ function makeBlock(parentDims : Dims, doubleWidth : boolean = false) : HTMLEleme
     return ret;
 }
 
-enum BlockType {
-    Empty,
-    Filled,
-    Flagged
-}
-
 class Label {
     public node : HTMLElement;
     private val : number[] = [];
@@ -361,6 +361,13 @@ class Block {
         this.node.style.border = "5px solid #0c0c0c";
         this.state = BlockType.Empty;
         this.updateDisplay();
+        this.node.onclick = (ev : MouseEvent) => {
+            if (this !== G.getCursor()) {
+                G.setCursor(this);
+                return;
+            }
+            G.toggleCurrent(ev.button === 0);
+        };
     }
 
     public updateDisplay() : void {

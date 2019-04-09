@@ -55,6 +55,12 @@ define("GUITypes", ["require", "exports"], function (require, exports) {
 define("game3", ["require", "exports", "GUITypes"], function (require, exports, GUITypes_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    var BlockType;
+    (function (BlockType) {
+        BlockType[BlockType["Empty"] = 0] = "Empty";
+        BlockType[BlockType["Filled"] = 1] = "Filled";
+        BlockType[BlockType["Flagged"] = 2] = "Flagged";
+    })(BlockType || (BlockType = {}));
     var Globals = (function () {
         function Globals() {
             this.width = document.body.getBoundingClientRect().width;
@@ -252,12 +258,6 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
         ret.style.border = "5px solid #FFFFFF";
         return ret;
     }
-    var BlockType;
-    (function (BlockType) {
-        BlockType[BlockType["Empty"] = 0] = "Empty";
-        BlockType[BlockType["Filled"] = 1] = "Filled";
-        BlockType[BlockType["Flagged"] = 2] = "Flagged";
-    })(BlockType || (BlockType = {}));
     var Label = (function () {
         function Label(parentDims, parent, isRow) {
             if (isRow === void 0) { isRow = false; }
@@ -368,6 +368,7 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
     }());
     var Block = (function () {
         function Block(parentDims, parent, loc) {
+            var _this = this;
             this.node = makeBlock(parentDims);
             this.loc = GUITypes_1.Coords.copy(loc);
             parent.appendChild(this.node);
@@ -375,6 +376,13 @@ define("game3", ["require", "exports", "GUITypes"], function (require, exports, 
             this.node.style.border = "5px solid #0c0c0c";
             this.state = BlockType.Empty;
             this.updateDisplay();
+            this.node.onclick = function (ev) {
+                if (_this !== G.getCursor()) {
+                    G.setCursor(_this);
+                    return;
+                }
+                G.toggleCurrent(ev.button === 0);
+            };
         }
         Block.prototype.updateDisplay = function () {
             var col;
